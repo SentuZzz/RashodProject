@@ -73,8 +73,24 @@ namespace WpfApp1.ViewModels
 
         private void LoadData()
         {
+            // Получаем свежие данные с вычисленными статусами
             var data = _repository.GetAllSoldiers();
-            Soldiers = new ObservableCollection<SoldierModel>(data);
+
+            if (Soldiers == null)
+            {
+                // При первом запуске просто создаем коллекцию
+                Soldiers = new ObservableCollection<SoldierModel>(data);
+            }
+            else
+            {
+                // При обновлении страницы — очищаем и заполняем заново. 
+                // WPF мгновенно увидит это изменение и перерисует таблицу!
+                Soldiers.Clear();
+                foreach (var soldier in data)
+                {
+                    Soldiers.Add(soldier);
+                }
+            }
         }
 
         // Кнопка нажмется только если солдат и статус выбраны, а даты логически правильные

@@ -87,11 +87,44 @@ namespace WpfApp1.Repositories
 
         public List<DateTime> GetBusyDatesForSoldier(int soldierId)
         {
+            // Используем HashSet, чтобы даты гарантированно не дублировались
+            var busyDates = new HashSet<DateTime>();
+
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                string sql = "SELECT DutyDate FROM DutyHistory WHERE SoldierID = @SoldierID";
-                return connection.Query<DateTime>(sql, new { SoldierID = soldierId }).ToList();
+                // 1. Получаем даты существующих нарядов
+                var dutyDates = connection.Query<DateTime>(
+                    "SELECT DutyDate FROM DutyHistory WHERE SoldierID = @SoldierID",
+                    new { SoldierID = soldierId }).ToList();
+
+                foreach (var d in dutyDates)
+                {
+                    busyDates.Add(d);
+                }
+
+                // 2. Получаем периоды отсутствия (где IsAbsence = 1)
+                var absences = connection.Query(
+                    @"SELECT sl.StartDate, sl.EndDate 
+                      FROM StatusLog sl 
+                      INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
+                      WHERE sl.SoldierID = @SoldierID AND st.IsAbsence = 1",
+                    new { SoldierID = soldierId }).ToList();
+
+                foreach (var absence in absences)
+                {
+                    // Парсим даты из базы
+                    DateTime start = Convert.ToDateTime(absence.StartDate);
+                    DateTime end = Convert.ToDateTime(absence.EndDate);
+
+                    // Проходимся циклом от первого до последнего дня отсутствия и заносим каждый день в список
+                    for (DateTime d = start.Date; d.Date <= end.Date; d = d.AddDays(1))
+                    {
+                        busyDates.Add(d);
+                    }
+                }
             }
+
+            return busyDates.ToList();
         }
     }
 }

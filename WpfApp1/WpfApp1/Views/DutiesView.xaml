@@ -23,7 +23,7 @@
                   RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column"
                   BorderThickness="0" Margin="0,0,20,0" SelectionChanged="DataGrid_SelectionChanged">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="50"/>
+                <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="20"/>
                 <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="150"/>
                 <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="100"/>
                 <!-- Бейджик типа службы -->

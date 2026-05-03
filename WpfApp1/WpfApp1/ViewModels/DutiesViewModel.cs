@@ -62,8 +62,20 @@ namespace WpfApp1.ViewModels
 
         private void LoadData()
         {
-            var data = _repository.GetAllSoldiers();
-            Soldiers = new ObservableCollection<SoldierModel>(data);
+            var data = _repository.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю").ToList();
+
+            if (Soldiers == null)
+            {
+                Soldiers = new ObservableCollection<SoldierModel>(data);
+            }
+            else
+            {
+                Soldiers.Clear();
+                foreach (var soldier in data)
+                {
+                    Soldiers.Add(soldier);
+                }
+            }
         }
 
         private bool CanExecuteAssignDuty(object obj)
@@ -79,9 +91,19 @@ namespace WpfApp1.ViewModels
                 int capacity = rule.Capacity;
                 int duration = rule.Duration;
 
+                var allBusyDates = _dutyRepository.GetBusyDatesForSoldier(SelectedSoldier.SoldierID);
+
                 for (int i = 0; i < duration; i++)
                 {
                     DateTime checkDate = SelectedDate.AddDays(i);
+
+                    if (allBusyDates.Contains(checkDate))
+                    {
+                        MessageBox.Show($"Дата {checkDate.ToShortDateString()} недоступна!\nВоеннослужащий в этот день уже в наряде, либо находится в отпуске/госпитале.", "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        UpdateBusyDates();
+                        return;
+                    }
+
                     if (_dutyRepository.IsCapacityFull(SelectedDuty.DutyID, checkDate, capacity))
                     {
                         MessageBox.Show($"На {checkDate.ToShortDateString()} наряд «{SelectedDuty.DutyName}» уже полностью укомплектован ({capacity} чел.).", "Нет мест", MessageBoxButton.OK, MessageBoxImage.Warning);
