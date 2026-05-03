@@ -18,7 +18,7 @@
 
         <TextBlock Grid.Column="0" Grid.Row="0" Text="ЛИЧНЫЙ СОСТАВ И СТАТУСЫ" Foreground="{StaticResource secondaryBackBrush}" FontSize="24" FontWeight="Bold" Margin="0,0,0,15"/>
 
-        <!-- ТАБЛИЦА -->
+
         <DataGrid Grid.Column="0" Grid.Row="1" ItemsSource="{Binding Soldiers}" SelectedItem="{Binding SelectedSoldier}"
                   AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White"
                   RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column"
@@ -26,19 +26,16 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="40"/>
 
-                <!-- Умная колонка: Текущий статус -->
                 <DataGridTemplateColumn Header="Текущий статус" Width="130">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
                                 <Border.Style>
                                     <Style TargetType="Border">
-                                        <!-- По умолчанию (если отсутствует) цвет желтоватый -->
                                         <Setter Property="Background" Value="#FFF3CD"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CurrentStatus}" Value="В строю">
                                                 <Setter Property="Background" Value="#D4EDDA"/>
-                                                <!-- Зеленый -->
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -47,11 +44,9 @@
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="#856404"/>
-                                            <!-- Темно-желтый текст -->
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding CurrentStatus}" Value="В строю">
                                                     <Setter Property="Foreground" Value="#155724"/>
-                                                    <!-- Зеленый текст -->
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -62,20 +57,20 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="120"/>
+                <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="100"/>
                 <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="*"/>
-                <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="120"/>
+                <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="100"/>
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- ПРАВАЯ ПАНЕЛЬ -->
+
         <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Background="White" CornerRadius="10" Padding="20">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
             </Border.Effect>
             <StackPanel>
                 <TextBlock Text="Учет отсутствующих" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,20"/>
-                <TextBlock Text="Выберите военнослужащего в таблице слева..." Foreground="Gray" TextWrapping="Wrap"
+                <TextBlock Text="Выберите военнослужащего в таблице..." Foreground="Gray" TextWrapping="Wrap"
                            Visibility="{Binding SelectedSoldier, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}"/>
 
                 <StackPanel>
@@ -97,7 +92,6 @@
                     <Border Background="#F5F5F5" CornerRadius="8" Padding="15" Margin="0,25,0,0">
                         <StackPanel>
                             <TextBlock Text="Изменение статуса" FontSize="14" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
-
                             <TextBlock Text="Новый статус:" Foreground="Gray" FontSize="12"/>
                             <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding SelectedStatus}" DisplayMemberPath="StatusName" Margin="0,5,0,15" Height="30" Padding="5"/>
 
@@ -107,9 +101,11 @@
                                     <ColumnDefinition Width="10"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
+
+
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Начало:" Foreground="Gray" FontSize="12"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Margin="0,5,0,0" Height="30">
+                                    <DatePicker SelectedDate="{Binding StartDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0">
                                         <DatePicker.CalendarStyle>
                                             <Style TargetType="Calendar">
                                                 <Setter Property="CalendarDayButtonStyle">
@@ -122,7 +118,7 @@
                                                                     <Setter Property="ToolTip">
                                                                         <Setter.Value>
                                                                             <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                                <Binding/>
+                                                                                <Binding />
                                                                                 <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
                                                                             </MultiBinding>
                                                                         </Setter.Value>
@@ -136,9 +132,11 @@
                                         </DatePicker.CalendarStyle>
                                     </DatePicker>
                                 </StackPanel>
+
+
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Окончание:" Foreground="Gray" FontSize="12"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Margin="0,5,0,0" Height="30">
+                                    <TextBlock Text="Конец:" Foreground="Gray" FontSize="12"/>
+                                    <DatePicker SelectedDate="{Binding EndDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0">
                                         <DatePicker.CalendarStyle>
                                             <Style TargetType="Calendar">
                                                 <Setter Property="CalendarDayButtonStyle">
@@ -151,7 +149,7 @@
                                                                     <Setter Property="ToolTip">
                                                                         <Setter.Value>
                                                                             <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                                <Binding/>
+                                                                                <Binding />
                                                                                 <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
                                                                             </MultiBinding>
                                                                         </Setter.Value>
@@ -167,8 +165,7 @@
                                 </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="Основание (Приказ, рапорт):" Foreground="Gray" FontSize="12"/>
-                            <!-- UpdateSourceTrigger гарантирует, что ViewModel мгновенно видит вводимый текст -->
+                            <TextBlock Text="Основание (приказ, рапорт):" Foreground="Gray" FontSize="12"/>
                             <TextBox Text="{Binding DocumentInfo, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,20" Height="30" Padding="5" VerticalContentAlignment="Center"/>
 
                             <Button Content="Сохранить" Command="{Binding ChangeStatusCommand}" Height="35" Background="#344E41" Foreground="White" BorderThickness="0">

@@ -97,7 +97,6 @@ namespace WpfApp1.ViewModels
                 int capacity = rule.Capacity;
                 int duration = rule.Duration;
 
-                // 1. Используем обновленный метод репозитория
                 var allBusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
 
                 for (int i = 0; i < duration; i++)
@@ -170,7 +169,6 @@ namespace WpfApp1.ViewModels
                 BusyDates = new ObservableCollection<DateTime>();
                 return;
             }
-            // Используем НОВОЕ имя метода из репозитория
             BusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
             BusyDates = new ObservableCollection<DateTime>(BusyDatesInfo.Keys);
         }

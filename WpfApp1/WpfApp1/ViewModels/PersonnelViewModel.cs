@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using WpfApp1.Models;
@@ -11,48 +13,62 @@ namespace WpfApp1.ViewModels
     {
         private readonly SoldierRepository _repository;
         private readonly StatusRepository _statusRepository;
+        private readonly DutyRepository _dutyRepository;
 
-        // Коллекции для интерфейса
+        private ObservableCollection<DateTime> _busyDates = new ObservableCollection<DateTime>();
+        public ObservableCollection<DateTime> BusyDates
+        {
+            get => _busyDates;
+            set { _busyDates = value; OnPropertyChanged(); }
+        }
+
+        private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
+        public Dictionary<DateTime, string> BusyDatesInfo
+        {
+            get => _busyDatesInfo;
+            set { _busyDatesInfo = value; OnPropertyChanged(); }
+        }
+
         public ObservableCollection<SoldierModel> Soldiers { get; set; }
         public ObservableCollection<StatusModel> Statuses { get; set; }
 
-        // Выбранный солдат в таблице
         private SoldierModel _selectedSoldier;
         public SoldierModel SelectedSoldier
         {
-            get { return _selectedSoldier; }
-            set { _selectedSoldier = value; OnPropertyChanged(); }
+            get => _selectedSoldier;
+            set
+            {
+                _selectedSoldier = value;
+                OnPropertyChanged();
+                UpdateBusyDates();
+            }
         }
 
-        // Выбранный статус в выпадающем списке
         private StatusModel _selectedStatus;
         public StatusModel SelectedStatus
         {
-            get { return _selectedStatus; }
+            get => _selectedStatus;
             set { _selectedStatus = value; OnPropertyChanged(); }
         }
 
-        // Дата начала
         private DateTime _startDate = DateTime.Today;
         public DateTime StartDate
         {
-            get { return _startDate; }
+            get => _startDate;
             set { _startDate = value; OnPropertyChanged(); }
         }
 
-        // Дата окончания (по умолчанию завтра)
         private DateTime _endDate = DateTime.Today.AddDays(1);
         public DateTime EndDate
         {
-            get { return _endDate; }
+            get => _endDate;
             set { _endDate = value; OnPropertyChanged(); }
         }
 
-        // Основание (номер приказа)
         private string _documentInfo;
         public string DocumentInfo
         {
-            get { return _documentInfo; }
+            get => _documentInfo;
             set { _documentInfo = value; OnPropertyChanged(); }
         }
 
@@ -62,73 +78,94 @@ namespace WpfApp1.ViewModels
         {
             _repository = new SoldierRepository();
             _statusRepository = new StatusRepository();
+            _dutyRepository = new DutyRepository();
 
-            // Загружаем список статусов для ComboBox
             Statuses = new ObservableCollection<StatusModel>(_statusRepository.GetAllStatuses());
-
             ChangeStatusCommand = new ViewModelCommand(ExecuteChangeStatus, CanExecuteChangeStatus);
 
             LoadData();
         }
 
-        private void LoadData()
+        private void UpdateBusyDates()
         {
-            // Получаем свежие данные с вычисленными статусами
-            var data = _repository.GetAllSoldiers();
-
-            if (Soldiers == null)
+            if (SelectedSoldier == null)
             {
-                // При первом запуске просто создаем коллекцию
-                Soldiers = new ObservableCollection<SoldierModel>(data);
+                BusyDatesInfo = new Dictionary<DateTime, string>();
+                BusyDates = new ObservableCollection<DateTime>();
+                return;
             }
-            else
-            {
-                // При обновлении страницы — очищаем и заполняем заново. 
-                // WPF мгновенно увидит это изменение и перерисует таблицу!
-                Soldiers.Clear();
-                foreach (var soldier in data)
-                {
-                    Soldiers.Add(soldier);
-                }
-            }
+            BusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
+            BusyDates = new ObservableCollection<DateTime>(BusyDatesInfo.Keys);
         }
 
-        // Кнопка нажмется только если солдат и статус выбраны, а даты логически правильные
         private bool CanExecuteChangeStatus(object obj)
         {
             return SelectedSoldier != null &&
                    SelectedStatus != null &&
-                   StartDate <= EndDate;
+                   StartDate.Date <= EndDate.Date;
         }
 
         private void ExecuteChangeStatus(object obj)
         {
             try
             {
-                // Записываем статус в базу
+                for (DateTime d = StartDate.Date; d <= EndDate.Date; d = d.AddDays(1))
+                {
+                    if (BusyDatesInfo.ContainsKey(d))
+                    {
+                        MessageBox.Show($"Дата {d.ToShortDateString()} занята!\nПричина: {BusyDatesInfo[d]}",
+                                        "Конфликт дат", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+
                 _statusRepository.AddStatusLog(SelectedSoldier.SoldierID, SelectedStatus.StatusID, StartDate, EndDate, DocumentInfo);
 
-                MessageBox.Show($"Статус военнослужащего {SelectedSoldier.LastName} успешно изменен на «{SelectedStatus.StatusName}».", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Статус для {SelectedSoldier.LastName} успешно сохранен.",
+                                "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Делаем полный сброс экрана, чтобы обновить таблицу
                 RefreshView();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при сохранении статуса: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void RefreshView()
         {
-            SelectedSoldier = null;
+            int? currentSoldierId = SelectedSoldier?.SoldierID;
+
             SelectedStatus = null;
             StartDate = DateTime.Today;
             EndDate = DateTime.Today.AddDays(1);
             DocumentInfo = string.Empty;
 
-            // Перезапрашиваем солдат. База данных вычислит их свежий статус и вернет нам!
             LoadData();
+
+            if (currentSoldierId.HasValue)
+            {
+                SelectedSoldier = Soldiers.FirstOrDefault(s => s.SoldierID == currentSoldierId.Value);
+            }
+            UpdateBusyDates();
+        }
+
+        private void LoadData()
+        {
+            var data = _repository.GetAllSoldiers();
+
+            if (Soldiers == null)
+            {
+                Soldiers = new ObservableCollection<SoldierModel>(data);
+            }
+            else
+            {
+                Soldiers.Clear();
+                foreach (var soldier in data)
+                {
+                    Soldiers.Add(soldier);
+                }
+            }
         }
     }
 }

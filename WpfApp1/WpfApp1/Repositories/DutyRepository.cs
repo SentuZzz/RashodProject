@@ -35,7 +35,6 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // ПРОВЕРКА КВОТЫ: Есть ли места на этот день?
         public bool IsCapacityFull(int dutyId, DateTime date, int maxCapacity)
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -47,12 +46,10 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // ПРОВЕРКА ОТДЫХА: Нет ли нарядов за день до, во время и через день после?
         public bool HasRestViolation(int soldierId, DateTime startDate, int duration)
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // Захватываем сутки до и сутки после наряда для проверки отдыха
                 DateTime minDate = startDate.AddDays(-1);
                 DateTime maxDate = startDate.AddDays(duration);
 
@@ -64,13 +61,11 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // НОВОЕ НАЗНАЧЕНИЕ: Умеет записывать многодневные наряды
         public void AssignDuty(int soldierId, int dutyId, DateTime startDate, int duration)
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 connection.Open();
-                // Используем транзакцию, чтобы если произойдет сбой, 3-дневный наряд не записался наполовину
                 using (var transaction = connection.BeginTransaction())
                 {
                     string sql = "INSERT INTO DutyHistory (SoldierID, DutyID, DutyDate) VALUES (@SoldierID, @DutyID, @DutyDate)";
@@ -91,36 +86,35 @@ namespace WpfApp1.Repositories
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // 1. Получаем наряды
-                var dutyDates = connection.Query(
-                    "SELECT dh.DutyDate, d.DutyName FROM DutyHistory dh INNER JOIN Duties d ON dh.DutyID = d.DutyID WHERE dh.SoldierID = @SoldierID",
-                    new { SoldierID = soldierId }).ToList();
-
-                foreach (dynamic d in dutyDates)
-                {
-                    DateTime date = Convert.ToDateTime(d.DutyDate);
-                    busyDates[date.Date] = $"В наряде: {d.DutyName}";
-                }
-
-                // 2. Получаем статусы отсутствия (Отпуска, больничные)
                 var absences = connection.Query(
                     @"SELECT sl.StartDate, sl.EndDate, st.StatusName 
-                      FROM StatusLog sl 
-                      INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
-                      WHERE sl.SoldierID = @SoldierID AND st.IsAbsence = 1",
+              FROM StatusLog sl 
+              INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
+              WHERE sl.SoldierID = @SoldierID AND st.IsAbsence = 1",
                     new { SoldierID = soldierId }).ToList();
 
-                foreach (dynamic absence in absences)
+                foreach (var absence in absences)
                 {
-                    DateTime start = Convert.ToDateTime(absence.StartDate);
-                    DateTime end = Convert.ToDateTime(absence.EndDate);
+                    DateTime start = DateTime.Parse(absence.StartDate.ToString()).Date;
+                    DateTime end = DateTime.Parse(absence.EndDate.ToString()).Date;
 
-                    // Проходимся по всему периоду отсутствия
-                    for (DateTime d = start.Date; d.Date <= end.Date; d = d.AddDays(1))
+                    for (DateTime d = start; d <= end; d = d.AddDays(1))
                     {
-                        // Если в этот день есть и отпуск, и наряд - отпуск перекроет запись
-                        busyDates[d.Date] = $"Отсутствует: {absence.StatusName}";
+                        busyDates[d] = absence.StatusName;
                     }
+                }
+
+                var dutyDates = connection.Query(
+                    @"SELECT dh.DutyDate, d.DutyName 
+              FROM DutyHistory dh 
+              INNER JOIN Duties d ON dh.DutyID = d.DutyID 
+              WHERE dh.SoldierID = @SoldierID",
+                    new { SoldierID = soldierId }).ToList();
+
+                foreach (var d in dutyDates)
+                {
+                    DateTime date = DateTime.Parse(d.DutyDate.ToString()).Date;
+                    busyDates[date] = $"В наряде: {d.DutyName}";
                 }
             }
             return busyDates;

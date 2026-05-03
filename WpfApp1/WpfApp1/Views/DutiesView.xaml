@@ -27,7 +27,7 @@
                 <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="150"/>
                 <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="100"/>
                 <!-- Бейджик типа службы -->
-                <DataGridTemplateColumn Header="Тип службы" Width="90">
+                <DataGridTemplateColumn Header="Тип службы" Width="90" SortMemberPath="ServiceType">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
