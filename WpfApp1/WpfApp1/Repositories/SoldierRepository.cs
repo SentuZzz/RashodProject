@@ -22,8 +22,15 @@ namespace WpfApp1.Repositories
                         s.SoldierID, s.LastName, s.FirstName, s.Patronymic, s.ServiceType,
                         r.RankName, p.PositionName, u.UnitName,
                         
-                        -- Вычисляем статус: ищем запись, где сегодняшняя дата между StartDate и EndDate
                         COALESCE(
+                            -- 1. Сначала проверяем, есть ли боец СЕГОДНЯ в наряде
+                            (SELECT 'В наряде: ' || d.DutyName
+                             FROM DutyHistory dh 
+                             INNER JOIN Duties d ON dh.DutyID = d.DutyID 
+                             WHERE dh.SoldierID = s.SoldierID AND date(dh.DutyDate) = date(@Today)
+                             LIMIT 1),
+
+                            -- 2. Если наряда нет, проверяем статусы отсутствия (отпуск/госпиталь)
                             (SELECT st.StatusName 
                              FROM StatusLog sl 
                              INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
@@ -31,6 +38,7 @@ namespace WpfApp1.Repositories
                                AND date(@Today) >= date(sl.StartDate) 
                                AND date(@Today) <= date(sl.EndDate)
                              ORDER BY sl.LogID DESC LIMIT 1), 
+                             
                         'В строю') AS CurrentStatus
 
                     FROM Soldiers s
@@ -39,7 +47,6 @@ namespace WpfApp1.Repositories
                     INNER JOIN Units u ON s.UnitID = u.UnitID";
 
                 string todayString = DateTime.Today.ToString("yyyy-MM-dd");
-
                 return connection.Query<SoldierModel>(sql, new { Today = todayString }).ToList();
             }
         }

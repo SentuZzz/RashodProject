@@ -11,6 +11,12 @@ namespace WpfApp1.ViewModels
 {
     public class DutiesViewModel : ViewModelBase
     {
+        private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
+        public Dictionary<DateTime, string> BusyDatesInfo
+        {
+            get { return _busyDatesInfo; }
+            set { _busyDatesInfo = value; OnPropertyChanged(); }
+        }
         private readonly SoldierRepository _repository;
         private readonly DutyRepository _dutyRepository;
 
@@ -91,15 +97,19 @@ namespace WpfApp1.ViewModels
                 int capacity = rule.Capacity;
                 int duration = rule.Duration;
 
-                var allBusyDates = _dutyRepository.GetBusyDatesForSoldier(SelectedSoldier.SoldierID);
+                // 1. Используем обновленный метод репозитория
+                var allBusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
 
                 for (int i = 0; i < duration; i++)
                 {
                     DateTime checkDate = SelectedDate.AddDays(i);
 
-                    if (allBusyDates.Contains(checkDate))
+                    // 2. Проверяем наличие ключа в словаре
+                    if (allBusyDatesInfo.ContainsKey(checkDate.Date))
                     {
-                        MessageBox.Show($"Дата {checkDate.ToShortDateString()} недоступна!\nВоеннослужащий в этот день уже в наряде, либо находится в отпуске/госпитале.", "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        // Достаем конкретную причину из словаря для сообщения
+                        string reason = allBusyDatesInfo[checkDate.Date];
+                        MessageBox.Show($"Дата {checkDate.ToShortDateString()} недоступна!\nПричина: {reason}", "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
                         UpdateBusyDates();
                         return;
                     }
@@ -155,14 +165,15 @@ namespace WpfApp1.ViewModels
 
         private void UpdateBusyDates()
         {
-            if (_selectedSoldier == null)
+            if (SelectedSoldier == null)
             {
+                BusyDatesInfo = new Dictionary<DateTime, string>();
                 BusyDates = new ObservableCollection<DateTime>();
                 return;
             }
-
-            var dates = _dutyRepository.GetBusyDatesForSoldier(_selectedSoldier.SoldierID);
-            BusyDates = new ObservableCollection<DateTime>(dates);
+            // Используем НОВОЕ имя метода из репозитория
+            BusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
+            BusyDates = new ObservableCollection<DateTime>(BusyDatesInfo.Keys);
         }
 
         private void RefreshView()

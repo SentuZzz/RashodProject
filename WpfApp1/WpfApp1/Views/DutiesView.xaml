@@ -68,8 +68,7 @@
             </Border.Effect>
             <StackPanel>
                 <TextBlock Text="Назначение" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,20"/>
-                <TextBlock Text="Выберите военнослужащего в таблице..." Foreground="Gray" TextWrapping="Wrap"
-                           Visibility="{Binding SelectedSoldier, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}"/>
+                <TextBlock Text="Выберите военнослужащего в таблице..." Foreground="Gray" TextWrapping="Wrap" Visibility="{Binding SelectedSoldier, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}"/>
 
                 <StackPanel>
                     <StackPanel.Style>
@@ -107,7 +106,15 @@
                                                         <Trigger Property="IsBlackedOut" Value="True">
                                                             <Setter Property="Background" Value="#FFDDDD"/>
                                                             <Setter Property="Foreground" Value="#D32F2F"/>
-                                                            <Setter Property="ToolTip" Value="Военнослужащий уже занят в этот день"/>
+                                                            <Setter Property="ToolTip">
+                                                                <Setter.Value>
+                                                                    <!-- Убедись, что StaticResource имя совпадает с тем, что в App.xaml -->
+                                                                    <MultiBinding Converter="{StaticResource DateTooltipConverter}">
+                                                                        <Binding/>
+                                                                        <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
+                                                                    </MultiBinding>
+                                                                </Setter.Value>
+                                                            </Setter>
                                                         </Trigger>
                                                     </Style.Triggers>
                                                 </Style>

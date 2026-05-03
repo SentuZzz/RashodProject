@@ -85,46 +85,45 @@ namespace WpfApp1.Repositories
             }
         }
 
-        public List<DateTime> GetBusyDatesForSoldier(int soldierId)
+        public Dictionary<DateTime, string> GetBusyDatesWithInfoForSoldier(int soldierId)
         {
-            // Используем HashSet, чтобы даты гарантированно не дублировались
-            var busyDates = new HashSet<DateTime>();
+            var busyDates = new Dictionary<DateTime, string>();
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // 1. Получаем даты существующих нарядов
-                var dutyDates = connection.Query<DateTime>(
-                    "SELECT DutyDate FROM DutyHistory WHERE SoldierID = @SoldierID",
+                // 1. Получаем наряды
+                var dutyDates = connection.Query(
+                    "SELECT dh.DutyDate, d.DutyName FROM DutyHistory dh INNER JOIN Duties d ON dh.DutyID = d.DutyID WHERE dh.SoldierID = @SoldierID",
                     new { SoldierID = soldierId }).ToList();
 
-                foreach (var d in dutyDates)
+                foreach (dynamic d in dutyDates)
                 {
-                    busyDates.Add(d);
+                    DateTime date = Convert.ToDateTime(d.DutyDate);
+                    busyDates[date.Date] = $"В наряде: {d.DutyName}";
                 }
 
-                // 2. Получаем периоды отсутствия (где IsAbsence = 1)
+                // 2. Получаем статусы отсутствия (Отпуска, больничные)
                 var absences = connection.Query(
-                    @"SELECT sl.StartDate, sl.EndDate 
+                    @"SELECT sl.StartDate, sl.EndDate, st.StatusName 
                       FROM StatusLog sl 
                       INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
                       WHERE sl.SoldierID = @SoldierID AND st.IsAbsence = 1",
                     new { SoldierID = soldierId }).ToList();
 
-                foreach (var absence in absences)
+                foreach (dynamic absence in absences)
                 {
-                    // Парсим даты из базы
                     DateTime start = Convert.ToDateTime(absence.StartDate);
                     DateTime end = Convert.ToDateTime(absence.EndDate);
 
-                    // Проходимся циклом от первого до последнего дня отсутствия и заносим каждый день в список
+                    // Проходимся по всему периоду отсутствия
                     for (DateTime d = start.Date; d.Date <= end.Date; d = d.AddDays(1))
                     {
-                        busyDates.Add(d);
+                        // Если в этот день есть и отпуск, и наряд - отпуск перекроет запись
+                        busyDates[d.Date] = $"Отсутствует: {absence.StatusName}";
                     }
                 }
             }
-
-            return busyDates.ToList();
+            return busyDates;
         }
     }
 }
