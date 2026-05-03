@@ -1,0 +1,36 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Основные цвета приложения -->
+    <Color x:Key="primaryBackgroundColor">#DAD7CD</Color>
+    <!-- Фон основного контента -->
+    <Color x:Key="secondaryBackgroundColor">#344E41</Color>
+    <!-- Фон меню -->
+
+    <!-- Цвета текста -->
+    <Color x:Key="primaryTextColor">#DAD7CD</Color>
+    <!-- Светлый текст (на темном фоне) -->
+    <Color x:Key="secondaryTextColor">#344E41</Color>
+    <!-- Темный текст (на светлом фоне) -->
+
+    <!-- Кисти (Brushes) для использования в XAML -->
+    <SolidColorBrush x:Key="primaryBackBrush" Color="{StaticResource primaryBackgroundColor}"/>
+    <SolidColorBrush x:Key="secondaryBackBrush" Color="{StaticResource secondaryBackgroundColor}"/>
+
+    <SolidColorBrush x:Key="primaryTextBrush" Color="{StaticResource primaryTextColor}"/>
+    <SolidColorBrush x:Key="secondaryTextBrush" Color="{StaticResource secondaryTextColor}"/>
+
+    <!-- Цвета для состояний элементов -->
+    <SolidColorBrush x:Key="panelOverColor" Color="#4A6151"/>
+    <!-- Фон кнопки меню при наведении -->
+    <SolidColorBrush x:Key="panelActiveColor" Color="{StaticResource primaryBackgroundColor}"/>
+    <!-- Фон активной кнопки меню -->
+    <SolidColorBrush x:Key="panelColor" Color="{StaticResource secondaryBackgroundColor}"/>
+    <!-- Основной цвет панели (для текста активной кнопки) -->
+
+    <!-- Старые названия для совместимости (если где-то используются) -->
+    <SolidColorBrush x:Key="plainTextColor1" Color="{StaticResource primaryTextColor}"/>
+    <SolidColorBrush x:Key="titleColor1" Color="{StaticResource primaryTextColor}"/>
+    <SolidColorBrush x:Key="titleColor2" Color="{StaticResource primaryTextColor}"/>
+
+</ResourceDictionary>
