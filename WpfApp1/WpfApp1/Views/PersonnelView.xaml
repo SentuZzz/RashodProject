@@ -122,7 +122,7 @@
                                                                     <Setter Property="ToolTip">
                                                                         <Setter.Value>
                                                                             <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                                <Binding />
+                                                                                <Binding/>
                                                                                 <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
                                                                             </MultiBinding>
                                                                         </Setter.Value>
@@ -151,7 +151,7 @@
                                                                     <Setter Property="ToolTip">
                                                                         <Setter.Value>
                                                                             <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                                <Binding />
+                                                                                <Binding/>
                                                                                 <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
                                                                             </MultiBinding>
                                                                         </Setter.Value>

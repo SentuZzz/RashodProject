@@ -22,24 +22,16 @@ namespace WpfApp1.Repositories
                         s.SoldierID, s.LastName, s.FirstName, s.Patronymic, s.ServiceType,
                         r.RankName, p.PositionName, u.UnitName,
                         
-                        COALESCE(
-                            -- 1. Сначала проверяем, есть ли боец СЕГОДНЯ в наряде
-                            (SELECT 'В наряде: ' || d.DutyName
-                             FROM DutyHistory dh 
-                             INNER JOIN Duties d ON dh.DutyID = d.DutyID 
-                             WHERE dh.SoldierID = s.SoldierID AND date(dh.DutyDate) = date(@Today)
-                             LIMIT 1),
-
-                            -- 2. Если наряда нет, проверяем статусы отсутствия (отпуск/госпиталь)
-                            (SELECT st.StatusName 
-                             FROM StatusLog sl 
-                             INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
-                             WHERE sl.SoldierID = s.SoldierID 
-                               AND date(@Today) >= date(sl.StartDate) 
-                               AND date(@Today) <= date(sl.EndDate)
-                             ORDER BY sl.LogID DESC LIMIT 1), 
-                             
-                        'В строю') AS CurrentStatus
+                    COALESCE(
+                    (SELECT 'В наряде: ' || d.DutyName FROM DutyHistory dh 
+                    JOIN Duties d ON dh.DutyID = d.DutyID 
+                    WHERE dh.SoldierID = s.SoldierID AND date(dh.DutyDate) = date(@Today) LIMIT 1),
+                    (SELECT st.StatusName FROM StatusLog sl 
+                    JOIN Statuses st ON sl.StatusID = st.StatusID 
+                    WHERE sl.SoldierID = s.SoldierID 
+                    AND date(@Today) BETWEEN date(sl.StartDate) AND date(sl.EndDate) LIMIT 1),
+                    'В строю'
+                    ) AS CurrentStatus
 
                     FROM Soldiers s
                     INNER JOIN Ranks r ON s.RankID = r.RankID

@@ -102,14 +102,13 @@ namespace WpfApp1.ViewModels
 
                 for (int i = 0; i < duration; i++)
                 {
-                    DateTime checkDate = SelectedDate.AddDays(i);
+                    DateTime checkDate = SelectedDate.AddDays(i).Date;
 
-                    // 2. Проверяем наличие ключа в словаре
-                    if (allBusyDatesInfo.ContainsKey(checkDate.Date))
+                    if (allBusyDatesInfo.ContainsKey(checkDate))
                     {
-                        // Достаем конкретную причину из словаря для сообщения
-                        string reason = allBusyDatesInfo[checkDate.Date];
-                        MessageBox.Show($"Дата {checkDate.ToShortDateString()} недоступна!\nПричина: {reason}", "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        string reason = allBusyDatesInfo[checkDate];
+                        MessageBox.Show($"Дата {checkDate.ToShortDateString()} недоступна!\nПричина: {reason}",
+                                        "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
                         UpdateBusyDates();
                         return;
                     }
