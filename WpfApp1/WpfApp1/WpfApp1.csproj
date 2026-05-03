@@ -104,7 +104,9 @@
     <Compile Include="Converters\DateTooltipConverter.cs" />
     <Compile Include="Converters\NullToVisibilityConverter.cs" />
     <Compile Include="Helpers\DatePickerHelper.cs" />
+    <Compile Include="Models\DashboardDutyModel.cs" />
     <Compile Include="Models\DutyModel.cs" />
+    <Compile Include="Models\NotificationModel.cs" />
     <Compile Include="Models\SoldierModel.cs" />
     <Compile Include="Models\StatusModel.cs" />
     <Compile Include="Repositories\DutyRepository.cs" />

@@ -119,5 +119,44 @@ namespace WpfApp1.Repositories
             }
             return busyDates;
         }
+        public List<DashboardDutyModel> GetTomorrowDutiesStatus()
+        {
+            var result = new List<DashboardDutyModel>();
+            DateTime tomorrow = DateTime.Today.AddDays(1);
+
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                // Получаем все виды нарядов из БД
+                var allDuties = GetDuties();
+
+                // Считаем, сколько человек УЖЕ назначено на завтра по каждому наряду
+                string sql = @"SELECT DutyID, COUNT(*) as AssignedCount 
+                       FROM DutyHistory 
+                       WHERE date(DutyDate) = date(@Tomorrow) 
+                       GROUP BY DutyID";
+
+                var assignedCounts = connection.Query(sql, new { Tomorrow = tomorrow.ToString("yyyy-MM-dd") })
+                                               .ToDictionary(row => (int)row.DutyID, row => (int)row.AssignedCount);
+
+                foreach (var duty in allDuties)
+                {
+                    // Берем правило вместимости из нашего словаря (например, Дневальный = 3 человека)
+                    if (DutyRules.TryGetValue(duty.DutyID, out var rule))
+                    {
+                        int assigned = assignedCounts.ContainsKey(duty.DutyID) ? assignedCounts[duty.DutyID] : 0;
+
+                        result.Add(new DashboardDutyModel
+                        {
+                            DutyName = duty.DutyName,
+                            Capacity = rule.Capacity,
+                            Assigned = assigned
+                        });
+                    }
+                }
+            }
+
+            // Сортируем: сначала те наряды, где НЕ ХВАТАЕТ людей (они важнее)
+            return result.OrderByDescending(d => d.Missing > 0).ThenBy(d => d.DutyName).ToList();
+        }
     }
 }
