@@ -105,8 +105,10 @@
     <Compile Include="Helpers\DatePickerHelper.cs" />
     <Compile Include="Models\DutyModel.cs" />
     <Compile Include="Models\SoldierModel.cs" />
+    <Compile Include="Models\StatusModel.cs" />
     <Compile Include="Repositories\DutyRepository.cs" />
     <Compile Include="Repositories\SoldierRepository.cs" />
+    <Compile Include="Repositories\StatusRepository.cs" />
     <Compile Include="ViewModels\DutiesViewModel.cs" />
     <Compile Include="ViewModels\HistoryViewModel.cs" />
     <Compile Include="ViewModels\HomeViewModel.cs" />

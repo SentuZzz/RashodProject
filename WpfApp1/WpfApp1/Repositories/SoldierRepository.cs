@@ -17,17 +17,32 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // Собираем данные из 4-х таблиц с помощью JOIN
+                // Запрашиваем данные, попутно вычисляя текущий статус на сегодняшний день
                 string sql = @"
-                    SELECT s.SoldierID, s.LastName, s.FirstName, s.Patronymic, s.ServiceType,
-                    r.RankName, p.PositionName, u.UnitName
+                    SELECT 
+                        s.SoldierID, s.LastName, s.FirstName, s.Patronymic, s.ServiceType,
+                        r.RankName, p.PositionName, u.UnitName,
+                        
+                        -- Вычисляем статус: ищем запись, где сегодняшняя дата между StartDate и EndDate
+                        COALESCE(
+                            (SELECT st.StatusName 
+                             FROM StatusLog sl 
+                             INNER JOIN Statuses st ON sl.StatusID = st.StatusID 
+                             WHERE sl.SoldierID = s.SoldierID 
+                               AND date(@Today) >= date(sl.StartDate) 
+                               AND date(@Today) <= date(sl.EndDate)
+                             ORDER BY sl.LogID DESC LIMIT 1), 
+                        'В строю') AS CurrentStatus
+
                     FROM Soldiers s
                     INNER JOIN Ranks r ON s.RankID = r.RankID
                     INNER JOIN Positions p ON s.PositionID = p.PositionID
                     INNER JOIN Units u ON s.UnitID = u.UnitID";
 
-                // Выполняем запрос и возвращаем список
-                return connection.Query<SoldierModel>(sql).ToList();
+                // Передаем сегодняшнюю дату в формате, который 100% поймет SQLite (YYYY-MM-DD)
+                string todayString = DateTime.Today.ToString("yyyy-MM-dd");
+
+                return connection.Query<SoldierModel>(sql, new { Today = todayString }).ToList();
             }
         }
     }
