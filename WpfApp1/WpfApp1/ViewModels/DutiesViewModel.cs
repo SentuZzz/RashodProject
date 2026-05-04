@@ -68,7 +68,7 @@ namespace WpfApp1.ViewModels
         public DateTime SelectedDate
         {
             get { return _selectedDate; }
-            set { _selectedDate = value; OnPropertyChanged(); UpdateDailyStatus(); }
+            set { _selectedDate = value; OnPropertyChanged(); UpdateDailyStatus(); LoadSoldiers(); }
         }
 
         public ICommand AssignDutyCommand { get; }
@@ -105,24 +105,21 @@ namespace WpfApp1.ViewModels
         }
         private void LoadSoldiers()
         {
-            // Получаем ВСЕХ солдат из базы
-            var allSoldiers = _repository.GetAllSoldiers();
+            // Передаем глобальную выбранную дату из календаря!
+            var allSoldiers = _repository.GetAllSoldiers(SelectedDate);
 
-            // Фильтруем, если галочка нажата
+            // Фильтруем, если нажата галочка
             if (HideUnavailable)
             {
                 allSoldiers = allSoldiers.Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
             }
 
-            // БЕЗОПАСНОЕ ОБНОВЛЕНИЕ ИНТЕРФЕЙСА:
             if (Soldiers == null)
             {
-                // Если открыли страницу первый раз
                 Soldiers = new ObservableCollection<SoldierModel>(allSoldiers);
             }
             else
             {
-                // Если просто нажали на галочку — очищаем и заполняем заново
                 Soldiers.Clear();
                 foreach (var soldier in allSoldiers)
                 {

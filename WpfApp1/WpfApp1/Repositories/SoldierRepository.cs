@@ -11,35 +11,49 @@ namespace WpfApp1.Repositories
     {
         private readonly string _connectionString = "Data Source=rashod.db;Version=3;";
 
-        public List<SoldierModel> GetAllSoldiers()
+        // Добавили параметр targetDate
+        // Вопросительный знак делает дату необязательной, а "= null" задает значение по умолчанию
+        public List<SoldierModel> GetAllSoldiers(DateTime? targetDate = null)
         {
             var soldiers = new List<SoldierModel>();
 
-            // Вычисляем, какая смена сейчас активна (магия 16:00)
-            DateTime now = DateTime.Now;
-            DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+            // МАГИЯ ДАТ: 
+            // Если дату передали (например, из календаря нарядов) - используем её.
+            // Если ничего не передали (вызов из других вкладок) - вычисляем текущую активную смену (правило 16:00)
+            DateTime queryDate;
+            if (targetDate.HasValue)
+            {
+                queryDate = targetDate.Value;
+            }
+            else
+            {
+                DateTime now = DateTime.Now;
+                queryDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+            }
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // Добавляем в SQL-запрос подзапрос (ActiveDutyCount), который проверяет наряды на текущую смену
                 string sql = @"
-                    SELECT s.*, r.RankName, p.PositionName, u.UnitName,
+            SELECT s.*, r.RankName, p.PositionName, u.UnitName,
                    (SELECT st.StatusName 
                     FROM StatusLog sl
                     JOIN Statuses st ON sl.StatusID = st.StatusID
                     WHERE sl.SoldierID = s.SoldierID 
-                      AND date('now') BETWEEN date(sl.StartDate) AND date(sl.EndDate)
+                      AND date(@TargetDate) BETWEEN date(sl.StartDate) AND date(sl.EndDate)
                     ORDER BY sl.StartDate DESC LIMIT 1) as CurrentStatus,
                    
                    (SELECT COUNT(*) 
                     FROM DutyHistory dh 
                     WHERE dh.SoldierID = s.SoldierID 
-                      AND date(dh.DutyDate) = date(@ActiveShift)) as ActiveDutyCount
-                      FROM Soldiers s
-                      LEFT JOIN Ranks r ON s.RankID = r.RankID
-                      LEFT JOIN Positions p ON s.PositionID = p.PositionID
-                      LEFT JOIN Units u ON s.UnitID = u.UnitID";
-                var records = connection.Query(sql, new { ActiveShift = activeShiftDate.ToString("yyyy-MM-dd") });
+                      AND date(dh.DutyDate) = date(@TargetDate)) as ActiveDutyCount
+
+            FROM Soldiers s
+            LEFT JOIN Ranks r ON s.RankID = r.RankID
+            LEFT JOIN Positions p ON s.PositionID = p.PositionID
+            LEFT JOIN Units u ON s.UnitID = u.UnitID";
+
+                // Передаем нашу вычисленную дату в SQL-запрос
+                var records = connection.Query(sql, new { TargetDate = queryDate.ToString("yyyy-MM-dd") });
 
                 foreach (var row in records)
                 {
@@ -57,7 +71,6 @@ namespace WpfApp1.Repositories
                         UnitName = row.UnitName,
                         ServiceType = row.ServiceType,
                         CurrentStatus = row.CurrentStatus ?? "В строю",
-                        // Если счетчик нарядов > 0, значит боец сейчас занят
                         IsOnActiveDuty = (long)row.ActiveDutyCount > 0
                     });
                 }
