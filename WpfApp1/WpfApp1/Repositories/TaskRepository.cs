@@ -36,15 +36,12 @@ namespace WpfApp1.Repositories
             var tasks = new List<TaskModel>();
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                string sqlTasks = @"
-                    SELECT t.*, c.CategoryName 
-                    FROM TaskHistory t
-                    JOIN TaskCategories c ON t.CategoryID = c.CategoryID";
-
+                string sqlTasks = "SELECT t.*, c.CategoryName FROM TaskHistory t JOIN TaskCategories c ON t.CategoryID = c.CategoryID";
                 tasks = connection.Query<TaskModel>(sqlTasks).ToList();
 
+                // ДОБАВЛЕНО: Вытаскиваем ServiceType
                 string sqlAssignments = @"
-                    SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, r.RankName
+                    SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, r.RankName, s.ServiceType
                     FROM TaskAssignments ta
                     JOIN Soldiers s ON ta.SoldierID = s.SoldierID
                     JOIN Ranks r ON s.RankID = r.RankID";
@@ -60,7 +57,8 @@ namespace WpfApp1.Repositories
                             SoldierID = (int)a.SoldierID,
                             LastName = (string)a.LastName,
                             FirstName = (string)a.FirstName,
-                            RankName = (string)a.RankName
+                            RankName = (string)a.RankName,
+                            ServiceType = (string)a.ServiceType
                         }).ToList();
                 }
             }
@@ -94,6 +92,37 @@ namespace WpfApp1.Repositories
             }
         }
 
+        // НОВЫЙ МЕТОД: Редактирование задачи
+        public void UpdateTask(TaskModel task, List<int> soldierIds)
+        {
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    string updateTaskSql = @"
+                        UPDATE TaskHistory 
+                        SET CategoryID = @CategoryID, TaskName = @TaskName, CreationDate = @CreationDate, DueDate = @DueDate
+                        WHERE TaskHistoryID = @TaskHistoryID";
+
+                    connection.Execute(updateTaskSql, task, transaction);
+
+                    // Перезаписываем исполнителей
+                    connection.Execute("DELETE FROM TaskAssignments WHERE TaskHistoryID = @Id", new { Id = task.TaskHistoryID }, transaction);
+
+                    if (soldierIds != null && soldierIds.Any())
+                    {
+                        string insertAssignmentSql = "INSERT INTO TaskAssignments (TaskHistoryID, SoldierID, AssignedDate) VALUES (@TaskId, @SoldierId, @AssignedDate)";
+                        foreach (var sId in soldierIds)
+                        {
+                            connection.Execute(insertAssignmentSql, new { TaskId = task.TaskHistoryID, SoldierId = sId, AssignedDate = DateTime.Now }, transaction);
+                        }
+                    }
+                    transaction.Commit();
+                }
+            }
+        }
+
         public void UpdateTaskStatus(int taskId, string newStatus)
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -101,6 +130,7 @@ namespace WpfApp1.Repositories
                 connection.Execute("UPDATE TaskHistory SET Status = @Status WHERE TaskHistoryID = @Id", new { Status = newStatus, Id = taskId });
             }
         }
+
         public void DeleteTask(int taskId)
         {
             using (var connection = new SQLiteConnection(_connectionString))

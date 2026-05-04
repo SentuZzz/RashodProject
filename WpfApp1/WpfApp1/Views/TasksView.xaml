@@ -7,9 +7,12 @@
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1100">
 
     <UserControl.Resources>
+        <!-- Вспомогательный конвертер видимости для кнопки Отмены -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
         <!-- Шаблон карточки задачи -->
         <DataTemplate x:Key="TaskCardTemplate">
-            <Border Background="White" CornerRadius="8" Margin="0,0,0,10" Cursor="Hand"
+            <Border Background="White" CornerRadius="8" Margin="0,0,0,12" Cursor="Hand"
                     PreviewMouseLeftButtonDown="TaskCard_PreviewMouseLeftButtonDown"
                     MouseMove="TaskCard_MouseMove">
                 <Border.Effect>
@@ -21,24 +24,29 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Шапка: Категория на всю ширину и корзина -->
+                    <!-- Шапка на всю ширину -->
                     <Border Grid.Row="0" Background="{Binding CategoryColor}" CornerRadius="8,8,0,0" Padding="12,6">
                         <Grid>
                             <TextBlock Text="{Binding CategoryName}" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                            <Button Command="{Binding DataContext.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-                                    CommandParameter="{Binding TaskHistoryID}" 
-                                    HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Удалить задачу">
-                                <fa:IconImage Icon="TrashAlt" Foreground="White" Width="12" Height="12"/>
-                            </Button>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Command="{Binding DataContext.EditTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                        CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Редактировать" Margin="0,0,8,0">
+                                    <fa:IconImage Icon="PenToSquare" Foreground="White" Width="12" Height="12"/>
+                                </Button>
+                                <Button Command="{Binding DataContext.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                        CommandParameter="{Binding TaskHistoryID}" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Удалить задачу">
+                                    <fa:IconImage Icon="TrashAlt" Foreground="White" Width="12" Height="12"/>
+                                </Button>
+                            </StackPanel>
                         </Grid>
                     </Border>
 
                     <!-- Тело карточки -->
-                    <StackPanel Grid.Row="1">
+                    <StackPanel Grid.Row="1" Margin="12,12,12,15">
                         <TextBlock Text="{Binding TaskName}" FontSize="15" FontWeight="Bold" Foreground="#1E293B" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
-                        <!-- Время задачи (перенесено ниже) -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                        <!-- Даты и Время -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
                             <fa:IconImage Icon="CalendarAlt" Width="12" Height="12" Foreground="#94A3B8" Margin="0,0,5,0" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding StartDateText}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
                             <TextBlock Text=" - " FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
@@ -56,14 +64,14 @@
                             </TextBlock>
                         </StackPanel>
 
-                        <!-- Исполнители -->
+                        <!-- Исполнители (С ВОЗДУХОМ Margin 0,0,0,8) -->
                         <ItemsControl ItemsSource="{Binding AssignedSoldiers}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                                        <TextBlock Text="• " Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding RankName}" FontSize="11" Foreground="#94A3B8" Margin="0,0,4,0"/>
-                                        <TextBlock Text="{Binding FullName}" FontSize="12" Foreground="#475569" FontWeight="SemiBold"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="• " Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding RankName}" FontSize="11" Foreground="#94A3B8" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding FullName}" FontSize="13" Foreground="#475569" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -96,7 +104,7 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="340"/>
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
@@ -132,6 +140,7 @@
             </Grid>
         </Border>
 
+        <!-- ПАНЕЛЬ РЕДАКТИРОВАНИЯ/СОЗДАНИЯ -->
         <Border Grid.Column="3" Background="White" CornerRadius="10" Padding="20">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
@@ -143,38 +152,86 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Новая задача" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,20"/>
+                <!-- Выбор Глобальной даты планирования -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Center">
+                    <fa:IconImage Icon="CalendarDay" Foreground="#344E41" Width="20" Height="20" Margin="0,0,8,0"/>
+                    <TextBlock Text="Дата плана:" FontSize="16" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <DatePicker SelectedDate="{Binding SelectedDate}" Width="120" Height="28" FontSize="13" Cursor="Hand"/>
+                </StackPanel>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                     <StackPanel>
+                        <!-- Заголовок панели -->
+                        <TextBlock Text="{Binding PanelTitle}" FontSize="16" FontWeight="Bold" Foreground="#3B82F6" Margin="0,0,0,15"/>
+
                         <TextBlock Text="Что нужно сделать?" Foreground="Gray" FontSize="12"/>
                         <TextBox Text="{Binding NewTaskName, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,15" Height="30" Padding="5"/>
 
                         <TextBlock Text="Категория:" Foreground="Gray" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="CategoryName" Margin="0,5,0,15" Height="30"/>
 
-                        <!-- Блок с датами -->
+                        <!-- ДАТА И ВРЕМЯ НАЧАЛА -->
                         <Grid Margin="0,0,0,15">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="10"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="65"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Начало:" Foreground="Gray" FontSize="12"/>
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Дата начала:" Foreground="Gray" FontSize="12"/>
                                 <DatePicker SelectedDate="{Binding NewTaskStartDate}" Margin="0,5,0,0" Height="30"/>
                             </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="Дедлайн:" Foreground="Gray" FontSize="12"/>
-                                <DatePicker SelectedDate="{Binding NewTaskDeadline, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" Height="30"/>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Время:" Foreground="Gray" FontSize="12"/>
+                                <TextBox Text="{Binding NewTaskStartTime, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" Height="30" Padding="5,0" VerticalContentAlignment="Center" ToolTip="Формат ЧЧ:ММ"/>
                             </StackPanel>
                         </Grid>
 
+                        <!-- ДАТА И ВРЕМЯ КОНЦА -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="65"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Дедлайн:" Foreground="Gray" FontSize="12"/>
+                                <DatePicker SelectedDate="{Binding NewTaskDeadline, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" Height="30"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Время:" Foreground="Gray" FontSize="12"/>
+                                <TextBox Text="{Binding NewTaskDeadlineTime, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" Height="30" Padding="5,0" VerticalContentAlignment="Center" ToolTip="Формат ЧЧ:ММ"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Контрактники СО ЗВАНИЕМ -->
+                        <!-- Контрактники СО ЗВАНИЕМ И ПРОВЕРКОЙ НАРЯДА -->
                         <TextBlock Text="Ответственный (контракт):" Foreground="Gray" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding AvailableContractors}" SelectedItem="{Binding SelectedContractor}" Margin="0,5,0,15" Height="30">
+                            <!-- Жестко блокируем клик по недоступному контрактнику -->
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
+                                    <Setter Property="ToolTip" Value="{Binding TooltipText}"/>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Soldier.LastName}" Foreground="{Binding StatusColor}"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <fa:IconImage Icon="{Binding StatusIcon}" Foreground="{Binding StatusColor}" Width="12" Height="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Soldier.RankName}" FontSize="12" Foreground="Gray" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Soldier.LastName}" FontSize="13" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#1E293B"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                            <Setter Property="Foreground" Value="#94A3B8"/>
+                                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
@@ -186,6 +243,7 @@
                                     <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsEnabled}" Margin="0,0,0,8" ToolTip="{Binding TooltipText}">
                                         <StackPanel Orientation="Horizontal">
                                             <fa:IconImage Icon="{Binding StatusIcon}" Foreground="{Binding StatusColor}" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Soldier.RankName}" FontSize="12" Foreground="Gray" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Soldier.FullName}" FontSize="13" VerticalAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
@@ -207,13 +265,29 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <Button Grid.Row="2" Content="Создать задачу" Command="{Binding CreateTaskCommand}" Height="40" Background="#344E41" Foreground="White" FontWeight="Bold" BorderThickness="0" Margin="0,15,0,0" Cursor="Hand">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="6"/>
-                        </Style>
-                    </Button.Resources>
-                </Button>
+                <!-- Кнопки управления -->
+                <Grid Grid.Row="2" Margin="0,15,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0" Content="{Binding SubmitButtonText}" Command="{Binding SaveTaskCommand}" Height="40" Background="#344E41" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+
+                    <Button Grid.Column="1" Content="Отмена" Command="{Binding CancelEditCommand}" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}" Height="40" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Margin="10,0,0,0" Padding="15,0" Cursor="Hand">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </Grid>
             </Grid>
         </Border>
     </Grid>
