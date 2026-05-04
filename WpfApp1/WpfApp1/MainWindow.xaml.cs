@@ -24,7 +24,7 @@ namespace WpfApp1
         public MainWindow()
         {
             InitializeComponent();
-            WpfApp1.Helpers.DataSeeder.Seed("Data Source=rashod.db;Version=3;");
+            
             this.DataContext = new ViewModels.MainViewModel();
         }
 
