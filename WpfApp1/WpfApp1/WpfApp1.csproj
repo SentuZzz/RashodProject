@@ -111,9 +111,11 @@
     <Compile Include="Models\NotificationModel.cs" />
     <Compile Include="Models\SoldierModel.cs" />
     <Compile Include="Models\StatusModel.cs" />
+    <Compile Include="Models\TaskModel.cs" />
     <Compile Include="Repositories\DutyRepository.cs" />
     <Compile Include="Repositories\SoldierRepository.cs" />
     <Compile Include="Repositories\StatusRepository.cs" />
+    <Compile Include="Repositories\TaskRepository.cs" />
     <Compile Include="ViewModels\DutiesViewModel.cs" />
     <Compile Include="ViewModels\HistoryViewModel.cs" />
     <Compile Include="ViewModels\HomeViewModel.cs" />
