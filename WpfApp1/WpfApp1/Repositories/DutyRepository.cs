@@ -191,5 +191,51 @@ namespace WpfApp1.Repositories
 
             return result.OrderByDescending(d => d.Missing > 0).ThenBy(d => d.DutyName).ToList();
         }
+        public List<ActiveDutyCardModel> GetActiveDutiesForDate(DateTime shiftDate)
+        {
+            var result = new List<ActiveDutyCardModel>();
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                // Вытаскиваем всех назначенных на конкретную дату с их званиями
+                string sql = @"
+            SELECT d.DutyName, r.RankName, s.LastName, s.FirstName, s.Patronymic
+            FROM DutyHistory dh
+            JOIN Duties d ON dh.DutyID = d.DutyID
+            JOIN Soldiers s ON dh.SoldierID = s.SoldierID
+            JOIN Ranks r ON s.RankID = r.RankID
+            WHERE date(dh.DutyDate) = date(@ShiftDate)
+            ORDER BY d.DutyName, s.RankID"; // Сортируем (старшие звания выше)
+
+                var records = connection.Query(sql, new { ShiftDate = shiftDate.ToString("yyyy-MM-dd") });
+
+                // Группируем людей по названию наряда
+                var grouped = records.GroupBy(r => (string)r.DutyName);
+
+                foreach (var group in grouped)
+                {
+                    var personnelList = new List<string>();
+                    foreach (var p in group)
+                    {
+                        // Формируем красивые инициалы
+                        string f = string.IsNullOrEmpty((string)p.FirstName) ? "" : ((string)p.FirstName)[0] + ".";
+                        string m = string.IsNullOrEmpty((string)p.Patronymic) ? "" : ((string)p.Patronymic)[0] + ".";
+
+                        // Сокращаем звание (например: Сержант -> С-т) - здесь можно добавить логику сокращений, 
+                        // пока выводим как есть или берем первые буквы
+                        string rank = p.RankName;
+
+                        personnelList.Add($"{rank} {p.LastName} {f}{m}");
+                    }
+
+                    result.Add(new ActiveDutyCardModel
+                    {
+                        DutyName = group.Key,
+                        Personnel = personnelList,
+                        ShiftPeriod = $"{shiftDate:dd.MM} - {shiftDate.AddDays(1):dd.MM}"
+                    });
+                }
+            }
+            return result;
+        }
     }
 }

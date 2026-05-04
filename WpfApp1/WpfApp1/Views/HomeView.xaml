@@ -128,62 +128,109 @@
             </Grid.ColumnDefinitions>
 
             <!-- ЛЕВАЯ ЧАСТЬ: НАРЯДЫ НА ЗАВТРА (Тревожная панель) -->
-            <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="20">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
-                </Border.Effect>
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+            <!-- ЛЕВАЯ ЧАСТЬ: КОНТРОЛЬ И ТЕКУЩИЕ НАРЯДЫ -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Чеклист планирования -->
+                    <RowDefinition Height="*"/>
+                    <!-- Карточки текущих нарядов -->
+                </Grid.RowDefinitions>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <fa:IconImage Icon="Bell" Foreground="#F59E0B" Width="20" Height="20" Margin="0,0,10,0"/>
-                        <TextBlock Text="НАРЯДЫ НА ЗАВТРА (КОНТРОЛЬ)" FontSize="16" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center"/>
-                    </StackPanel>
+                <!-- БЛОК 1: ЧЕК-ЛИСТ ПЛАНИРОВАНИЯ -->
+                <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,15">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Grid Margin="0,0,0,15">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <fa:IconImage Icon="Bell" Foreground="#F59E0B" Width="20" Height="20" Margin="0,0,10,0"/>
+                                <TextBlock Text="ПЛАНИРОВАНИЕ НАРЯДОВ (КОНТРОЛЬ)" FontSize="16" FontWeight="Bold" Foreground="#344E41"/>
+                            </StackPanel>
+                            <!-- Кнопка раскрытия списка -->
+                            <Button Content="{Binding ToggleChecklistText}" Command="{Binding ToggleChecklistCommand}" 
+                                    HorizontalAlignment="Right" Background="Transparent" Foreground="#3B82F6" BorderThickness="0" Cursor="Hand"/>
+                        </Grid>
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding TomorrowDuties}">
+                        <ItemsControl ItemsSource="{Binding VisiblePlanningDuties}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,10">
+                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,8">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-
-                                            <!-- Иконка статуса -->
-                                            <fa:IconImage Grid.Column="0" Icon="{Binding IconName}" Foreground="{Binding StatusColor}" Width="26" Height="26" VerticalAlignment="Center"/>
-
-                                            <!-- Название и прогресс -->
+                                            <fa:IconImage Grid.Column="0" Icon="{Binding IconName, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" Width="20" Height="20" VerticalAlignment="Center"/>
                                             <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding DutyName}" FontSize="15" FontWeight="SemiBold" Foreground="#1E293B"/>
-                                                <TextBlock Foreground="#64748B" FontSize="13" Margin="0,2,0,0">
-                                                    <Run Text="Назначено: "/>
-                                                    <Run Text="{Binding Assigned}" FontWeight="Bold" Foreground="#0F172A"/>
-                                                    <Run Text=" из "/>
-                                                    <Run Text="{Binding Capacity}"/>
-                                                </TextBlock>
+                                                <TextBlock Text="{Binding DutyName}" FontSize="14" FontWeight="SemiBold" Foreground="#1E293B"/>
                                             </StackPanel>
-
-                                            <!-- Текст статуса -->
-                                            <Border Grid.Column="2" Background="White" CornerRadius="6" Padding="12,6" VerticalAlignment="Center">
-                                                <Border.Effect>
-                                                    <DropShadowEffect BlurRadius="5" Color="Black" Opacity="0.05" ShadowDepth="1"/>
-                                                </Border.Effect>
-                                                <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontWeight="Bold" FontSize="12"/>
+                                            <Border Grid.Column="2" Background="White" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding StatusText, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" FontWeight="Bold" FontSize="11"/>
                                             </Border>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </ScrollViewer>
-                </Grid>
-            </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- БЛОК 2: КАРТОЧКИ ТЕКУЩИХ НАРЯДОВ -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding ActiveDutyCards}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <!-- Стилизация под карточку из скриншота -->
+                                <Border Width="280" Background="#9CA3AF" CornerRadius="8" Padding="15" Margin="0,0,15,15">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="8" Color="Black" Opacity="0.1" ShadowDepth="2"/>
+                                    </Border.Effect>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Заголовок карточки -->
+                                        <TextBlock Grid.Row="0" Text="{Binding DutyName}" FontSize="16" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,10"/>
+
+                                        <!-- Список бойцов -->
+                                        <ItemsControl Grid.Row="1" ItemsSource="{Binding Personnel}" Margin="0,0,0,15">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                                        <Border Width="3" Background="White" CornerRadius="1.5" Margin="0,0,10,0"/>
+                                                        <TextBlock Text="{Binding}" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <!-- Нижняя панель с датами -->
+                                        <Grid Grid.Row="2">
+                                            <Border Background="#4B5563" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
+                                                <fa:IconImage Icon="InfoCircle" Foreground="White" Width="14" Height="14"/>
+                                            </Border>
+                                            <Border Background="#4D7C5F" CornerRadius="4" Padding="15,4" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding ShiftPeriod}" Foreground="White" FontWeight="Bold" FontSize="12"/>
+                                            </Border>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
 
             <!-- ПРАВАЯ ЧАСТЬ: БЛИЖАЙШИЕ УВЕДОМЛЕНИЯ (Заглушка для следующего шага) -->
             <Border Grid.Column="2" Background="White" CornerRadius="12" Padding="20">

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows.Input;
 using System.Windows.Threading;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
@@ -26,6 +28,46 @@ namespace WpfApp1.ViewModels
             get => _currentTime;
             set { _currentTime = value; OnPropertyChanged(); }
         }
+
+        private ObservableCollection<ActiveDutyCardModel> _activeDutyCards;
+        public ObservableCollection<ActiveDutyCardModel> ActiveDutyCards
+        {
+            get => _activeDutyCards;
+            set { _activeDutyCards = value; OnPropertyChanged(); }
+        }
+
+        private ObservableCollection<DashboardDutyModel> _planningDuties; // Бывший TomorrowDuties
+        public ObservableCollection<DashboardDutyModel> PlanningDuties
+        {
+            get => _planningDuties;
+            set
+            {
+                _planningDuties = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(VisiblePlanningDuties)); // Обновляем видимый список
+            }
+        }
+
+        private bool _isChecklistExpanded;
+        public bool IsChecklistExpanded
+        {
+            get => _isChecklistExpanded;
+            set
+            {
+                _isChecklistExpanded = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(VisiblePlanningDuties));
+                OnPropertyChanged(nameof(ToggleChecklistText));
+            }
+        }
+
+        public string ToggleChecklistText => IsChecklistExpanded ? "Скрыть" : "Посмотреть все";
+
+        public IEnumerable<DashboardDutyModel> VisiblePlanningDuties => IsChecklistExpanded ? PlanningDuties : PlanningDuties?.Where(d => d.Missing > 0).Take(2);
+
+        public ICommand ToggleChecklistCommand { get; }
+
+
 
         private string _currentDate;
         public string CurrentDate
@@ -71,6 +113,7 @@ namespace WpfApp1.ViewModels
 
         public HomeViewModel()
         {
+            ToggleChecklistCommand = new ViewModelCommand(o => IsChecklistExpanded = !IsChecklistExpanded);
             _soldierRepository = new SoldierRepository();
             _dutyRepository = new DutyRepository();
             _statusRepository = new StatusRepository();
@@ -118,6 +161,14 @@ namespace WpfApp1.ViewModels
             AbsentCount = TotalCount - OnDutyCount - InFormationCount;
             TomorrowDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetTomorrowDutiesStatus());
             UpcomingEvents = new ObservableCollection<NotificationModel>(_statusRepository.GetUpcomingNotifications(3));
+
+            DateTime now = DateTime.Now;
+            DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+
+            DateTime planningDate = activeShiftDate.AddDays(1);
+
+            ActiveDutyCards = new ObservableCollection<ActiveDutyCardModel>(_dutyRepository.GetActiveDutiesForDate(activeShiftDate));
+            PlanningDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetDutiesStatusForDate(planningDate));
         }
 
     }
