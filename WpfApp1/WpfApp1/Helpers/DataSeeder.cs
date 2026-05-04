@@ -21,14 +21,13 @@ namespace WpfApp1.Helpers
             {
                 db.Open();
 
-                // 1. Читаем базовые справочники
                 var duties = db.Query<DutyDto>("SELECT DutyID, DutyName, RolePriority FROM Duties").ToList();
-                var unitIds = db.Query<int>("SELECT UnitID FROM Units").ToList();
 
                 var ranks = db.Query("SELECT RankID, RankName FROM Ranks").ToDictionary(r => (string)r.RankName, r => (int)r.RankID);
                 var positions = db.Query("SELECT PositionID, PositionName FROM Positions").ToDictionary(p => (string)p.PositionName, p => (int)p.PositionID);
+                var units = db.Query("SELECT UnitID, UnitName FROM Units").ToDictionary(u => (string)u.UnitName, u => (int)u.UnitID);
 
-                if (!ranks.Any() || !positions.Any() || !unitIds.Any() || !duties.Any())
+                if (!ranks.Any() || !positions.Any() || !units.Any() || !duties.Any())
                     return;
 
                 var random = new Random();
@@ -42,7 +41,6 @@ namespace WpfApp1.Helpers
                 db.Execute("DELETE FROM StatusLog");
                 db.Execute("DELETE FROM Soldiers");
 
-                // --- ИДЕАЛЬНОЕ ШТАТНОЕ РАСПИСАНИЕ РОТЫ (110 человек) ---
                 var companyRoster = new List<(string Rank, string Position, string ServiceType, int Count)>
                 {
                     // Управление
@@ -54,16 +52,16 @@ namespace WpfApp1.Helpers
 
                     // Взводное звено
                     ("Лейтенант", "Командир взвода", "По контракту", 2),
-                    ("Прапорщик", "Командир взвода", "По контракту", 1), // Прапорщик - КВ
+                    ("Прапорщик", "Командир взвода", "По контракту", 1),
                     ("Старший сержант", "Заместитель командира взвода", "По контракту", 2),
-                    ("Прапорщик", "Заместитель командира взвода", "По контракту", 1), // Прапорщик - ЗКВ
+                    ("Прапорщик", "Заместитель командира взвода", "По контракту", 1),
 
-                    // Командиры отделений и контрактники-спецы
+                    // Командиры отделений и спецы
                     ("Сержант", "Командир отделения", "По контракту", 9),
                     ("Младший сержант", "Наводчик", "По контракту", 9),
                     ("Ефрейтор", "Водитель", "По контракту", 3),
 
-                    // Срочники (Основная сила)
+                    // Срочники
                     ("Ефрейтор", "Старший стрелок", "По призыву", 9),
                     ("Рядовой", "Пулеметчик", "По призыву", 9),
                     ("Рядовой", "Гранатометчик", "По призыву", 9),
@@ -77,7 +75,9 @@ namespace WpfApp1.Helpers
                 var conscripts = new List<int>();
                 DateTime startJoinDate = DateTime.Now.AddYears(-2);
 
-                // 2. Генерируем солдат строго по Штату
+                int platoonCounter = 1;
+                int squadCounter = 1;
+
                 foreach (var role in companyRoster)
                 {
                     for (int i = 0; i < role.Count; i++)
@@ -85,10 +85,36 @@ namespace WpfApp1.Helpers
                         string ln = lastNames[random.Next(lastNames.Length)];
                         string fn = firstNames[random.Next(firstNames.Length)];
                         string mn = patronymics[random.Next(patronymics.Length)];
-                        int uId = unitIds[random.Next(unitIds.Count)];
 
                         int rId = GetIdOrFallback(ranks, role.Rank);
                         int pId = GetIdOrFallback(positions, role.Position);
+
+                        int uId;
+
+                        // Логика распределения по подразделениям
+                        var hqPositions = new[] { "Командир роты", "Заместитель командира роты", "Замполит", "Старшина роты", "Начальник склада" };
+                        var platoonPositions = new[] { "Командир взвода", "Заместитель командира взвода" };
+
+                        if (hqPositions.Contains(role.Position))
+                        {
+                            uId = GetIdOrFallback(units, "Управление роты");
+                        }
+                        else if (platoonPositions.Contains(role.Position))
+                        {
+                            uId = GetIdOrFallback(units, $"{platoonCounter}-й Взвод");
+                            platoonCounter++;
+                            if (platoonCounter > 3) platoonCounter = 1;
+                        }
+                        else
+                        {
+                            // Карусель отделений: 1-е Отделение 1В, 2-е Отделение 1В и т.д.
+                            int platoonNum = ((squadCounter - 1) / 3) + 1;
+                            int squadNum = ((squadCounter - 1) % 3) + 1;
+                            uId = GetIdOrFallback(units, $"{squadNum}-е Отделение {platoonNum}В");
+
+                            squadCounter++;
+                            if (squadCounter > 9) squadCounter = 1;
+                        }
 
                         int randomDays = random.Next((DateTime.Now - startJoinDate).Days);
                         string jDateStr = startJoinDate.AddDays(randomDays).ToString("yyyy-MM-dd");
@@ -104,7 +130,7 @@ namespace WpfApp1.Helpers
                     }
                 }
 
-                // 3. Генерируем историю нарядов (Апрель 2026) С УЧЕТОМ ОТДЫХА
+                // Генерируем историю нарядов
                 DateTime startDate = new DateTime(2026, 4, 1);
                 var lastDutyDates = new Dictionary<int, DateTime>();
 
@@ -133,7 +159,6 @@ namespace WpfApp1.Helpers
                         for (int k = 0; k < count; k++)
                         {
                             int sId = 0;
-                            // Назначаем: Приоритет 1 (Главные) - Контракт. Подчиненные - Срочники.
                             if (duty.RolePriority == 1 && contIdx < restedContractors.Count)
                                 sId = restedContractors[contIdx++];
                             else if (duty.RolePriority > 1 && consIdx < restedConscripts.Count)
