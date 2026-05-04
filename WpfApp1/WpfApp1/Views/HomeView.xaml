@@ -211,13 +211,14 @@
                                                 <DataTemplate>
                                                     <Grid Margin="0,3">
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" SharedSizeGroup="RoleColumn"/>
+                                                            <!-- Убрали Auto и SharedSizeGroup. Задали жесткую пропорцию (примерно 45% на 55%) -->
+                                                            <ColumnDefinition Width="1*"/>
                                                             <ColumnDefinition Width="Auto"/>
-                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="1.2*"/>
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- Название должности -->
-                                                        <TextBlock Grid.Column="0" Text="{Binding RoleName}" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        <!-- Название должности (добавили TextWrapping="Wrap", чтобы длинные должности переносились аккуратно) -->
+                                                        <TextBlock Grid.Column="0" Text="{Binding RoleName}" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
 
                                                         <!-- Вертикальная линия-разделитель -->
                                                         <Border Grid.Column="1" Width="2" Background="#D1D5DB" Margin="8,0" CornerRadius="1"/>
