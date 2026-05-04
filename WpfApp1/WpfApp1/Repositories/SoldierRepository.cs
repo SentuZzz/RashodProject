@@ -13,41 +13,56 @@ namespace WpfApp1.Repositories
 
         public List<SoldierModel> GetAllSoldiers()
         {
+            var soldiers = new List<SoldierModel>();
+
+            // Вычисляем, какая смена сейчас активна (магия 16:00)
+            DateTime now = DateTime.Now;
+            DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+
             using (var connection = new SQLiteConnection(_connectionString))
             {
+                // Добавляем в SQL-запрос подзапрос (ActiveDutyCount), который проверяет наряды на текущую смену
                 string sql = @"
-                    SELECT 
-                        s.SoldierID, s.LastName, s.FirstName, s.Patronymic, s.ServiceType,
-                        r.RankName, p.PositionName, u.UnitName,
-                        COALESCE(
-                            -- 1. Приоритет: Наряд на текущую дату
-                            (SELECT 'В наряде: ' || d.DutyName 
-                             FROM DutyHistory dh 
-                             JOIN Duties d ON dh.DutyID = d.DutyID 
-                             WHERE dh.SoldierID = s.SoldierID 
-                               AND date(dh.DutyDate) = date(@Today) 
-                             LIMIT 1),
+                    SELECT s.*, r.RankName, p.PositionName, u.UnitName,
+                   (SELECT st.StatusName 
+                    FROM StatusLog sl
+                    JOIN Statuses st ON sl.StatusID = st.StatusID
+                    WHERE sl.SoldierID = s.SoldierID 
+                      AND date('now') BETWEEN date(sl.StartDate) AND date(sl.EndDate)
+                    ORDER BY sl.StartDate DESC LIMIT 1) as CurrentStatus,
+                   
+                   (SELECT COUNT(*) 
+                    FROM DutyHistory dh 
+                    WHERE dh.SoldierID = s.SoldierID 
+                      AND date(dh.DutyDate) = date(@ActiveShift)) as ActiveDutyCount
+                      FROM Soldiers s
+                      LEFT JOIN Ranks r ON s.RankID = r.RankID
+                      LEFT JOIN Positions p ON s.PositionID = p.PositionID
+                      LEFT JOIN Units u ON s.UnitID = u.UnitID";
+                var records = connection.Query(sql, new { ActiveShift = activeShiftDate.ToString("yyyy-MM-dd") });
 
-                            -- 2. Вторично: Статус отсутствия (отпуск, госпиталь)
-                            (SELECT st.StatusName 
-                             FROM StatusLog sl 
-                             JOIN Statuses st ON sl.StatusID = st.StatusID 
-                             WHERE sl.SoldierID = s.SoldierID 
-                               AND date(@Today) >= date(sl.StartDate) 
-                               AND date(@Today) <= date(sl.EndDate) 
-                             ORDER BY sl.LogID DESC LIMIT 1), 
-                             
-                            -- 3. Дефолт
-                            'В строю'
-                        ) AS CurrentStatus
-                    FROM Soldiers s
-                    INNER JOIN Ranks r ON s.RankID = r.RankID
-                    INNER JOIN Positions p ON s.PositionID = p.PositionID
-                    INNER JOIN Units u ON s.UnitID = u.UnitID";
-
-                string todayString = DateTime.Today.ToString("yyyy-MM-dd");
-                return connection.Query<SoldierModel>(sql, new { Today = todayString }).ToList();
+                foreach (var row in records)
+                {
+                    soldiers.Add(new SoldierModel
+                    {
+                        SoldierID = (int)row.SoldierID,
+                        FirstName = row.FirstName,
+                        LastName = row.LastName,
+                        Patronymic = row.Patronymic,
+                        RankID = (int)row.RankID,
+                        PositionID = (int)row.PositionID,
+                        UnitID = (int)row.UnitID,
+                        RankName = row.RankName,
+                        PositionName = row.PositionName,
+                        UnitName = row.UnitName,
+                        ServiceType = row.ServiceType,
+                        CurrentStatus = row.CurrentStatus ?? "В строю",
+                        // Если счетчик нарядов > 0, значит боец сейчас занят
+                        IsOnActiveDuty = (long)row.ActiveDutyCount > 0
+                    });
+                }
             }
+            return soldiers;
         }
     }
 }

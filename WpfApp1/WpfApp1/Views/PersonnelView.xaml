@@ -25,8 +25,24 @@
                   BorderThickness="0" Margin="0,0,20,0" SelectionChanged="DataGrid_SelectionChanged">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="40"/>
-
-                <DataGridTemplateColumn Header="Текущий статус" Width="130" SortMemberPath="ServiceType">
+                <!-- Колонка "Статус занятости" -->
+                <DataGridTemplateColumn Header="Статус" Width="100" SortMemberPath="AvailabilityText">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,0,0">
+                                <!-- Цветной кружочек -->
+                                <Border Width="10" Height="10" CornerRadius="5" Background="{Binding AvailabilityColor, Mode=OneWay}" Margin="0,0,8,0">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="4" Color="{Binding AvailabilityColor, Mode=OneWay}" Opacity="0.4" ShadowDepth="0"/>
+                                    </Border.Effect>
+                                </Border>
+                                <!-- Текст статуса -->
+                                <TextBlock Text="{Binding AvailabilityText, Mode=OneWay}" Foreground="{Binding AvailabilityColor, Mode=OneWay}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <!--<DataGridTemplateColumn Header="Текущий статус" Width="130" SortMemberPath="ServiceType">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -55,11 +71,11 @@
                             </Border>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
+                </DataGridTemplateColumn>-->
 
-                <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="100"/>
-                <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="*"/>
-                <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="100"/>
+                <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="120"/>
+                <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="220"/>
+                <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="130"/>
             </DataGrid.Columns>
         </DataGrid>
 

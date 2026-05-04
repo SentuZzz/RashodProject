@@ -29,5 +29,10 @@ namespace WpfApp1.Views
         {
 
         }
+
+        private void CheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

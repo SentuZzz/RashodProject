@@ -17,16 +17,45 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Column="0" Grid.Row="0" Text="СУТОЧНЫЕ НАРЯДЫ" Foreground="{StaticResource secondaryBackBrush}" FontSize="24" FontWeight="Bold" Margin="0,0,0,15"/>
+        <!-- ВЕРХНЯЯ ПАНЕЛЬ С ЗАГОЛОВКОМ И ФИЛЬТРОМ -->
+        <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="СУТОЧНЫЕ НАРЯДЫ" Foreground="{StaticResource secondaryBackBrush}" FontSize="24" FontWeight="Bold" Margin="0,0,0,5"/>
+            <!-- Наш новый чекбокс-фильтр -->
+            <CheckBox Content="Скрыть отсутствующих и занятых в наряде" 
+                      IsChecked="{Binding HideUnavailable}" 
+                      Foreground="#64748B" FontSize="13" FontWeight="SemiBold" 
+                      VerticalAlignment="Center" Cursor="Hand"/>
+        </StackPanel>
 
+        <!-- ЛЕВАЯ ПАНЕЛЬ: ТАБЛИЦА -->
         <DataGrid Grid.Column="0" Grid.Row="1" ItemsSource="{Binding Soldiers}" SelectedItem="{Binding SelectedSoldier}"
                   AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White"
                   RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column"
                   BorderThickness="0" Margin="0,0,20,0" SelectionChanged="DataGrid_SelectionChanged">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="20"/>
+                <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="35"/>
+
+                <!-- НОВАЯ КОЛОНКА "СТАТУС" (СВЕТОФОР) -->
+                <DataGridTemplateColumn Header="Статус" Width="110" SortMemberPath="AvailabilityText">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,0,0">
+                                <!-- Цветной кружочек -->
+                                <Border Width="10" Height="10" CornerRadius="5" Background="{Binding AvailabilityColor, Mode=OneWay}" Margin="0,0,8,0">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="4" Color="{Binding AvailabilityColor, Mode=OneWay}" Opacity="0.4" ShadowDepth="0"/>
+                                    </Border.Effect>
+                                </Border>
+                                <!-- Текст статуса -->
+                                <TextBlock Text="{Binding AvailabilityText, Mode=OneWay}" Foreground="{Binding AvailabilityColor, Mode=OneWay}" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
                 <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="150"/>
                 <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="100"/>
+
                 <!-- Бейджик типа службы -->
                 <DataGridTemplateColumn Header="Тип службы" Width="90" SortMemberPath="ServiceType">
                     <DataGridTemplateColumn.CellTemplate>
@@ -69,12 +98,12 @@
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
             </Border.Effect>
 
-            <!-- Добавили ScrollViewer для защиты от перекрытий -->
+            <!-- ScrollViewer для защиты от перекрытий -->
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                 <StackPanel>
                     <TextBlock Text="Назначение" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
 
-                    <!-- РАСКРЫВАЮЩИЙСЯ ЧЕК-ЛИСТ (теперь сразу под заголовком) -->
+                    <!-- РАСКРЫВАЮЩИЙСЯ ЧЕК-ЛИСТ -->
                     <Expander Header="Чек-лист на выбранную дату" Margin="0,0,0,20" Foreground="#344E41" FontWeight="Bold" FontSize="14" IsExpanded="True">
                         <ItemsControl ItemsSource="{Binding DailyDutiesStatus}" Margin="0,10,0,0">
                             <ItemsControl.ItemTemplate>
@@ -159,7 +188,7 @@
                                     </DatePicker.CalendarStyle>
                                 </DatePicker>
 
-                                <Button Content="Назначить" Command="{Binding AssignDutyCommand}" Height="35" Background="#344E41" Foreground="White" BorderThickness="0">
+                                <Button Content="Назначить" Command="{Binding AssignDutyCommand}" Height="35" Background="#344E41" Foreground="White" BorderThickness="0" Cursor="Hand">
                                     <Button.Resources>
                                         <Style TargetType="Border">
                                             <Setter Property="CornerRadius" Value="5"/>

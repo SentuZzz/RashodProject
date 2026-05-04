@@ -20,6 +20,18 @@ namespace WpfApp1.ViewModels
         private readonly SoldierRepository _repository;
         private readonly DutyRepository _dutyRepository;
 
+        private bool _hideUnavailable;
+        public bool HideUnavailable
+        {
+            get => _hideUnavailable;
+            set
+            {
+                _hideUnavailable = value;
+                OnPropertyChanged();
+                LoadSoldiers();
+            }
+        }
+
         private ObservableCollection<DateTime> _busyDates = new ObservableCollection<DateTime>();
         public ObservableCollection<DateTime> BusyDates
         {
@@ -86,6 +98,33 @@ namespace WpfApp1.ViewModels
             {
                 Soldiers.Clear();
                 foreach (var soldier in data)
+                {
+                    Soldiers.Add(soldier);
+                }
+            }
+        }
+        private void LoadSoldiers()
+        {
+            // Получаем ВСЕХ солдат из базы
+            var allSoldiers = _repository.GetAllSoldiers();
+
+            // Фильтруем, если галочка нажата
+            if (HideUnavailable)
+            {
+                allSoldiers = allSoldiers.Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
+            }
+
+            // БЕЗОПАСНОЕ ОБНОВЛЕНИЕ ИНТЕРФЕЙСА:
+            if (Soldiers == null)
+            {
+                // Если открыли страницу первый раз
+                Soldiers = new ObservableCollection<SoldierModel>(allSoldiers);
+            }
+            else
+            {
+                // Если просто нажали на галочку — очищаем и заполняем заново
+                Soldiers.Clear();
+                foreach (var soldier in allSoldiers)
                 {
                     Soldiers.Add(soldier);
                 }

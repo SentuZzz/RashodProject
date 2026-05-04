@@ -19,5 +19,28 @@ namespace WpfApp1.Models
         public string ServiceType { get; set; }
         public string FullName => $"{LastName} {FirstName} {Patronymic}".Trim();
         public string CurrentStatus { get; set; }
+
+        public int RankID { get; set; }
+        public int PositionID { get; set; }
+        public int UnitID { get; set; }
+        public bool IsOnActiveDuty { get; set; }
+        public string AvailabilityText
+        {
+            get
+            {
+                if (CurrentStatus != "В строю") return CurrentStatus; 
+                if (IsOnActiveDuty) return "В наряде";           
+                return "Свободен";                                   
+            }
+        }
+        public string AvailabilityColor
+        {
+            get
+            {
+                if (CurrentStatus != "В строю") return "#EF4444"; 
+                if (IsOnActiveDuty) return "#F59E0B";             
+                return "#10B981";                           
+            }
+        }
     }
 }
