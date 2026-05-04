@@ -102,7 +102,11 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                 <StackPanel>
                     <TextBlock Text="Назначение" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
-
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
+                        <fa:IconImage Icon="CalendarAlt" Foreground="#344E41" Width="22" Height="22" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Дата наряда:" FontSize="12" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                        <DatePicker SelectedDate="{Binding SelectedDate}" Width="140" Height="30" FontSize="14" Cursor="Hand"/>
+                    </StackPanel>
                     <!-- РАСКРЫВАЮЩИЙСЯ ЧЕК-ЛИСТ -->
                     <Expander Header="Чек-лист на выбранную дату" Margin="0,0,0,20" Foreground="#344E41" FontWeight="Bold" FontSize="14" IsExpanded="True">
                         <ItemsControl ItemsSource="{Binding DailyDutiesStatus}" Margin="0,10,0,0">
@@ -161,32 +165,81 @@
                                 <ComboBox ItemsSource="{Binding AvailableDuties}" SelectedItem="{Binding SelectedDuty}" DisplayMemberPath="DutyName" Margin="0,5,0,15" Height="30" Padding="5"/>
 
                                 <TextBlock Text="Дата заступления:" Foreground="Gray" FontSize="12"/>
-                                <DatePicker SelectedDate="{Binding SelectedDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" DisplayDateStart="{Binding MinAllowedDate, Mode=OneWay}" Margin="0,5,0,20" Height="30">
-                                    <DatePicker.CalendarStyle>
-                                        <Style TargetType="Calendar">
-                                            <Setter Property="CalendarDayButtonStyle">
-                                                <Setter.Value>
-                                                    <Style TargetType="CalendarDayButton">
-                                                        <Style.Triggers>
-                                                            <Trigger Property="IsBlackedOut" Value="True">
-                                                                <Setter Property="Background" Value="#FFDDDD"/>
-                                                                <Setter Property="Foreground" Value="#D32F2F"/>
-                                                                <Setter Property="ToolTip">
-                                                                    <Setter.Value>
-                                                                        <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                            <Binding/>
-                                                                            <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
-                                                                        </MultiBinding>
-                                                                    </Setter.Value>
-                                                                </Setter>
-                                                            </Trigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </DatePicker.CalendarStyle>
-                                </DatePicker>
+                                <StackPanel Orientation="Horizontal" Margin="0,5,0,20" Height="30">
+
+                                    <!-- Кнопка переключения (Плюс / Отмена) -->
+                                    <Button Command="{Binding ToggleCustomDateCommand}" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand" VerticalAlignment="Center" ToolTip="Назначить вне очереди (другая дата)">
+                                        <fa:IconImage Width="18" Height="18">
+                                            <fa:IconImage.Style>
+                                                <Style TargetType="fa:IconImage">
+                                                    <Setter Property="Icon" Value="CalendarPlus"/>
+                                                    <Setter Property="Foreground" Value="#3B82F6"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCustomDateVisible}" Value="True">
+                                                            <Setter Property="Icon" Value="Times"/>
+                                                            <Setter Property="Foreground" Value="#EF4444"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </fa:IconImage.Style>
+                                        </fa:IconImage>
+                                    </Button>
+
+                                    <!-- Обычный текст (Используется Глобальная дата) -->
+                                    <TextBlock Text="{Binding SelectedDate, StringFormat='{}{0:dd.MM.yyyy} (По плану)'}" 
+                                        FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#1E293B">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCustomDateVisible}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Скрытый кастомный DatePicker для внеочередного наряда -->
+                                    <DatePicker SelectedDate="{Binding CustomAssignDate}" 
+                                        helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" 
+                                        Width="140" VerticalAlignment="Center" Cursor="Hand">
+                                        <DatePicker.Style>
+                                            <Style TargetType="DatePicker">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCustomDateVisible}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DatePicker.Style>
+                                        <DatePicker.CalendarStyle>
+                                            <Style TargetType="Calendar">
+                                                <Setter Property="CalendarDayButtonStyle">
+                                                    <Setter.Value>
+                                                        <Style TargetType="CalendarDayButton">
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsBlackedOut" Value="True">
+                                                                    <Setter Property="Background" Value="#FFDDDD"/>
+                                                                    <Setter Property="Foreground" Value="#D32F2F"/>
+                                                                    <Setter Property="ToolTip">
+                                                                        <Setter.Value>
+                                                                            <MultiBinding Converter="{StaticResource DateTooltipConverter}">
+                                                                                <Binding/>
+                                                                                <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
+                                                                            </MultiBinding>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </DatePicker.CalendarStyle>
+                                    </DatePicker>
+                                </StackPanel>
 
                                 <Button Content="Назначить" Command="{Binding AssignDutyCommand}" Height="35" Background="#344E41" Foreground="White" BorderThickness="0" Cursor="Hand">
                                     <Button.Resources>

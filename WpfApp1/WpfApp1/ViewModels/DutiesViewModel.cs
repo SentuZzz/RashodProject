@@ -47,6 +47,24 @@ namespace WpfApp1.ViewModels
             set { _dailyDutiesStatus = value; OnPropertyChanged(); }
         }
 
+        // Дата для внеочередного наряда
+        private DateTime _customAssignDate = DateTime.Today;
+        public DateTime CustomAssignDate
+        {
+            get { return _customAssignDate; }
+            set { _customAssignDate = value; OnPropertyChanged(); }
+        }
+
+        // Видимость дополнительного календарика
+        private bool _isCustomDateVisible;
+        public bool IsCustomDateVisible
+        {
+            get { return _isCustomDateVisible; }
+            set { _isCustomDateVisible = value; OnPropertyChanged(); }
+        }
+
+        // Команда для нажатия на кнопку "Плюс"
+        public ICommand ToggleCustomDateCommand { get; }
         public ObservableCollection<SoldierModel> Soldiers { get; set; }
         public ObservableCollection<DutyModel> AvailableDuties { get; set; }
         private List<DutyModel> _allDuties;
@@ -69,7 +87,14 @@ namespace WpfApp1.ViewModels
         public DateTime SelectedDate
         {
             get { return _selectedDate; }
-            set { _selectedDate = value; OnPropertyChanged(); UpdateDailyStatus(); LoadSoldiers(); }
+            set
+            {
+                _selectedDate = value;
+                CustomAssignDate = value;
+                OnPropertyChanged();
+                UpdateDailyStatus();
+                LoadSoldiers();
+            }
         }
 
         public ICommand AssignDutyCommand { get; }
@@ -78,6 +103,8 @@ namespace WpfApp1.ViewModels
         {
             _repository = new SoldierRepository();
             _dutyRepository = new DutyRepository();
+
+            ToggleCustomDateCommand = new ViewModelCommand(o => IsCustomDateVisible = !IsCustomDateVisible);
 
             _allDuties = _dutyRepository.GetDuties();
             AvailableDuties = new ObservableCollection<DutyModel>();
@@ -140,13 +167,15 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteAssignDuty(object obj)
         {
+            DateTime targetDate = IsCustomDateVisible ? CustomAssignDate : SelectedDate;
+            if (targetDate.Date < DateTime.Today.AddDays(-1))
+            {
+                MessageBox.Show("Нельзя назначать наряды задним числом! Разрешены только текущая и предыдущая смены.",
+                                "Отмена операции", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             try
             {
-                if (SelectedDate.Date < MinAllowedDate.Date)
-                {
-                    MessageBox.Show("Нельзя назначать наряды задним числом!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
                 var rule = _dutyRepository.DutyRules[SelectedDuty.DutyID];
                 int capacity = rule.Capacity;
                 int duration = rule.Duration;
@@ -155,7 +184,7 @@ namespace WpfApp1.ViewModels
 
                 for (int i = 0; i < duration; i++)
                 {
-                    DateTime checkDate = SelectedDate.AddDays(i).Date;
+                    DateTime checkDate = targetDate.AddDays(i).Date;
 
                     if (allBusyDatesInfo.ContainsKey(checkDate))
                     {
@@ -174,17 +203,21 @@ namespace WpfApp1.ViewModels
                     }
                 }
 
-                if (_dutyRepository.HasRestViolation(SelectedSoldier.SoldierID, SelectedDate, duration))
+                if (_dutyRepository.HasRestViolation(SelectedSoldier.SoldierID, targetDate, duration))
                 {
                     MessageBox.Show($"Нарушение режима!\nУ военнослужащего возникает накладка на другие наряды, либо не соблюден интервал отдыха (1 сутки до и после наряда).", "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
                     UpdateBusyDates();
                     return;
                 }
 
-                _dutyRepository.AssignDuty(SelectedSoldier.SoldierID, SelectedDuty.DutyID, SelectedDate, duration);
+                _dutyRepository.AssignDuty(SelectedSoldier.SoldierID, SelectedDuty.DutyID, targetDate, duration); // <-- Заменили
 
-                string daysText = duration > 1 ? $"на {duration} суток" : "на 1 сутки";
-                MessageBox.Show($"Военнослужащий {SelectedSoldier.LastName} успешно назначен в {SelectedDuty.DutyName} {daysText} (с {SelectedDate.ToShortDateString()})!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                string daysText = duration > 1 ? $"на {duration} суток" : "";
+                MessageBox.Show($"Боец {SelectedSoldier.LastName} назначен в наряд {SelectedDuty.DutyName} {daysText} (дата заступления {targetDate.ToShortDateString()})!",
+                                "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                IsCustomDateVisible = false;
+                CustomAssignDate = SelectedDate;
 
                 UpdateDailyStatus();
                 RefreshView();
@@ -232,7 +265,7 @@ namespace WpfApp1.ViewModels
         {
             SelectedSoldier = null;
             SelectedDuty = null;
-            SelectedDate = DateTime.Today;
+            //SelectedDate = DateTime.Today;
             LoadData();
         }
     }
