@@ -145,26 +145,23 @@ namespace WpfApp1.ViewModels
 
         private void LoadStatistics()
         {
-            // Берем список всех бойцов. 
-            // Благодаря нашему крутому SQL-запросу, у них уже проставлены актуальные статусы!
             var soldiers = _soldierRepository.GetAllSoldiers();
-
             TotalCount = soldiers.Count;
 
-            // Считаем тех, у кого статус начинается на "В наряде"
-            OnDutyCount = soldiers.Count(s => s.CurrentStatus != null && s.CurrentStatus.StartsWith("В наряде"));
+            // ИСПРАВЛЕНИЕ 1: Теперь мы ищем людей в наряде по правильному флагу IsOnActiveDuty
+            OnDutyCount = soldiers.Count(s => s.IsOnActiveDuty);
 
-            // Считаем тех, кто в строю
-            InFormationCount = soldiers.Count(s => s.CurrentStatus == "В строю");
+            // ИСПРАВЛЕНИЕ 2: В строю находятся те, кто свободен (CurrentStatus == "В строю") И прямо сейчас НЕ в наряде
+            InFormationCount = soldiers.Count(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty);
 
-            // Все остальные (отпуска, госпитали, СОЧ) — это отсутствующие
+            // ИСПРАВЛЕНИЕ 3: Отсутствующие — это все остальные (Отпуск, Госпиталь, СОЧ)
             AbsentCount = TotalCount - OnDutyCount - InFormationCount;
+
             TomorrowDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetTomorrowDutiesStatus());
             UpcomingEvents = new ObservableCollection<NotificationModel>(_statusRepository.GetUpcomingNotifications(3));
 
             DateTime now = DateTime.Now;
             DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
-
             DateTime planningDate = activeShiftDate.AddDays(1);
 
             ActiveDutyCards = new ObservableCollection<ActiveDutyCardModel>(_dutyRepository.GetActiveDutiesForDate(activeShiftDate));

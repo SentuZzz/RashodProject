@@ -153,28 +153,33 @@
                                     HorizontalAlignment="Right" Background="Transparent" Foreground="#3B82F6" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
 
-                        <ItemsControl ItemsSource="{Binding VisiblePlanningDuties}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,8">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <fa:IconImage Grid.Column="0" Icon="{Binding IconName, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" Width="20" Height="20" VerticalAlignment="Center"/>
-                                            <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding DutyName}" FontSize="14" FontWeight="SemiBold" Foreground="#1E293B"/>
-                                            </StackPanel>
-                                            <Border Grid.Column="2" Background="White" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding StatusText, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" FontWeight="Bold" FontSize="11"/>
-                                            </Border>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+                            <ItemsControl ItemsSource="{Binding VisiblePlanningDuties}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <fa:IconImage Grid.Column="0" Icon="{Binding IconName, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" Width="20" Height="20" VerticalAlignment="Center"/>
+
+                                                <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DutyName}" FontSize="14" FontWeight="SemiBold" Foreground="#1E293B"/>
+                                                </StackPanel>
+
+                                                <Border Grid.Column="2" Background="White" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding StatusText, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" FontWeight="Bold" FontSize="11"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
                     </StackPanel>
                 </Border>
 
