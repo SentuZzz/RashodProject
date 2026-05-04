@@ -27,6 +27,13 @@ namespace WpfApp1.ViewModels
             set { _busyDates = value; OnPropertyChanged(); }
         }
 
+        private ObservableCollection<DashboardDutyModel> _dailyDutiesStatus;
+        public ObservableCollection<DashboardDutyModel> DailyDutiesStatus
+        {
+            get => _dailyDutiesStatus;
+            set { _dailyDutiesStatus = value; OnPropertyChanged(); }
+        }
+
         public ObservableCollection<SoldierModel> Soldiers { get; set; }
         public ObservableCollection<DutyModel> AvailableDuties { get; set; }
         private List<DutyModel> _allDuties;
@@ -49,7 +56,7 @@ namespace WpfApp1.ViewModels
         public DateTime SelectedDate
         {
             get { return _selectedDate; }
-            set { _selectedDate = value; OnPropertyChanged(); }
+            set { _selectedDate = value; OnPropertyChanged(); UpdateDailyStatus(); }
         }
 
         public ICommand AssignDutyCommand { get; }
@@ -63,6 +70,7 @@ namespace WpfApp1.ViewModels
             AvailableDuties = new ObservableCollection<DutyModel>();
 
             AssignDutyCommand = new ViewModelCommand(ExecuteAssignDuty, CanExecuteAssignDuty);
+            UpdateDailyStatus();
             LoadData();
         }
 
@@ -83,7 +91,11 @@ namespace WpfApp1.ViewModels
                 }
             }
         }
-
+        private void UpdateDailyStatus()
+        {
+            DailyDutiesStatus = new ObservableCollection<DashboardDutyModel>(
+                _dutyRepository.GetDutiesStatusForDate(SelectedDate));
+        }
         private bool CanExecuteAssignDuty(object obj)
         {
             return SelectedSoldier != null && SelectedDuty != null;
@@ -132,6 +144,7 @@ namespace WpfApp1.ViewModels
                 string daysText = duration > 1 ? $"на {duration} суток" : "на 1 сутки";
                 MessageBox.Show($"Военнослужащий {SelectedSoldier.LastName} успешно назначен в {SelectedDuty.DutyName} {daysText} (с {SelectedDate.ToShortDateString()})!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
+                UpdateDailyStatus();
                 RefreshView();
             }
             catch (Exception ex)

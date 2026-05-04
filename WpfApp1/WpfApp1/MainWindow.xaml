@@ -72,7 +72,7 @@
                                  Command="{Binding ShowHomeViewCommand}">
                         <StackPanel Orientation="Horizontal">
                             <fa:IconImage Icon="Home" Style="{StaticResource menuButtonIcon}"/>
-                            <TextBlock Text="Дашборд" Style="{StaticResource menuButtonText}"/>
+                            <TextBlock Text="Главная" Style="{StaticResource menuButtonText}"/>
                         </StackPanel>
                     </RadioButton>
 
