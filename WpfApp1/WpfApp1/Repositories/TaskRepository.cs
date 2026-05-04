@@ -13,7 +13,6 @@ namespace WpfApp1.Repositories
 
         public TaskRepository()
         {
-            // При первом запуске заполним базовые категории задач, если их нет
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 int count = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM TaskCategories");
@@ -37,7 +36,6 @@ namespace WpfApp1.Repositories
             var tasks = new List<TaskModel>();
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // Забираем задачи
                 string sqlTasks = @"
                     SELECT t.*, c.CategoryName 
                     FROM TaskHistory t
@@ -45,7 +43,6 @@ namespace WpfApp1.Repositories
 
                 tasks = connection.Query<TaskModel>(sqlTasks).ToList();
 
-                // Забираем назначенных бойцов
                 string sqlAssignments = @"
                     SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, r.RankName
                     FROM TaskAssignments ta
@@ -54,7 +51,6 @@ namespace WpfApp1.Repositories
 
                 var assignments = connection.Query(sqlAssignments);
 
-                // Привязываем бойцов к их задачам
                 foreach (var task in tasks)
                 {
                     task.AssignedSoldiers = assignments
@@ -78,7 +74,6 @@ namespace WpfApp1.Repositories
                 connection.Open();
                 using (var transaction = connection.BeginTransaction())
                 {
-                    // Создаем саму задачу
                     string insertTaskSql = @"
                         INSERT INTO TaskHistory (CategoryID, TaskName, CreationDate, DueDate, Status) 
                         VALUES (@CategoryID, @TaskName, @CreationDate, @DueDate, @Status);
@@ -86,7 +81,6 @@ namespace WpfApp1.Repositories
 
                     int newTaskId = connection.QuerySingle<int>(insertTaskSql, task, transaction);
 
-                    // Назначаем бойцов
                     if (soldierIds != null && soldierIds.Any())
                     {
                         string insertAssignmentSql = "INSERT INTO TaskAssignments (TaskHistoryID, SoldierID, AssignedDate) VALUES (@TaskId, @SoldierId, @AssignedDate)";
@@ -100,12 +94,18 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // Метод, который мы будем вызывать при Drag-n-Drop перетаскивании карточки
         public void UpdateTaskStatus(int taskId, string newStatus)
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 connection.Execute("UPDATE TaskHistory SET Status = @Status WHERE TaskHistoryID = @Id", new { Status = newStatus, Id = taskId });
+            }
+        }
+        public void DeleteTask(int taskId)
+        {
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Execute("DELETE FROM TaskHistory WHERE TaskHistoryID = @Id", new { Id = taskId });
             }
         }
     }

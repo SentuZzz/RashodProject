@@ -8,27 +8,17 @@ using WpfApp1.Repositories;
 
 namespace WpfApp1.ViewModels
 {
-    // Вспомогательный класс для списка выбора бойцов с учетом "Правила 16:00"
     public class TaskSoldierSelectionModel : ViewModelBase
     {
         public SoldierModel Soldier { get; set; }
 
         private bool _isSelected;
-        public bool IsSelected
-        {
-            get => _isSelected;
-            set { _isSelected = value; OnPropertyChanged(); }
-        }
+        public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
 
-        public bool IsGoingOnDuty { get; set; } // Заступает ли сегодня?
+        public bool IsGoingOnDuty { get; set; }
 
-        // Блокируем выбор, если боец заступает в наряд, а дедлайн позже 15:00
         private bool _isEnabled = true;
-        public bool IsEnabled
-        {
-            get => _isEnabled;
-            set { _isEnabled = value; OnPropertyChanged(); }
-        }
+        public bool IsEnabled { get => _isEnabled; set { _isEnabled = value; OnPropertyChanged(); } }
 
         public string StatusIcon => IsGoingOnDuty ? "ShieldHalved" : "CheckCircle";
         public string StatusColor => IsGoingOnDuty ? "#F59E0B" : "#10B981";
@@ -41,14 +31,18 @@ namespace WpfApp1.ViewModels
         private readonly SoldierRepository _soldierRepo;
         private readonly DutyRepository _dutyRepo;
 
-        // Колонки Канбан-доски
         public ObservableCollection<TaskModel> TodoTasks { get; set; }
         public ObservableCollection<TaskModel> InProgressTasks { get; set; }
         public ObservableCollection<TaskModel> DoneTasks { get; set; }
 
-        // Данные для создания задачи
         public ObservableCollection<TaskCategoryModel> Categories { get; set; }
-        public ObservableCollection<TaskSoldierSelectionModel> AvailableSoldiers { get; set; }
+
+        // РАЗДЕЛЕНИЕ НА КОНТРАКТНИКОВ И СРОЧНИКОВ
+        public ObservableCollection<TaskSoldierSelectionModel> AvailableContractors { get; set; }
+        public ObservableCollection<TaskSoldierSelectionModel> AvailableConscripts { get; set; }
+
+        private TaskSoldierSelectionModel _selectedContractor;
+        public TaskSoldierSelectionModel SelectedContractor { get => _selectedContractor; set { _selectedContractor = value; OnPropertyChanged(); } }
 
         private string _newTaskName;
         public string NewTaskName { get => _newTaskName; set { _newTaskName = value; OnPropertyChanged(); } }
@@ -56,19 +50,14 @@ namespace WpfApp1.ViewModels
         private TaskCategoryModel _selectedCategory;
         public TaskCategoryModel SelectedCategory { get => _selectedCategory; set { _selectedCategory = value; OnPropertyChanged(); } }
 
+        private DateTime _newTaskStartDate = DateTime.Today;
+        public DateTime NewTaskStartDate { get => _newTaskStartDate; set { _newTaskStartDate = value; OnPropertyChanged(); } }
+
         private DateTime? _newTaskDeadline;
-        public DateTime? NewTaskDeadline
-        {
-            get => _newTaskDeadline;
-            set
-            {
-                _newTaskDeadline = value;
-                OnPropertyChanged();
-                ValidateSoldiersByDeadline(); // Проверяем "Правило 16:00" при смене времени
-            }
-        }
+        public DateTime? NewTaskDeadline { get => _newTaskDeadline; set { _newTaskDeadline = value; OnPropertyChanged(); ValidateSoldiersByDeadline(); } }
 
         public ICommand CreateTaskCommand { get; }
+        public ICommand DeleteTaskCommand { get; }
 
         public TasksViewModel()
         {
@@ -77,6 +66,7 @@ namespace WpfApp1.ViewModels
             _dutyRepo = new DutyRepository();
 
             CreateTaskCommand = new ViewModelCommand(ExecuteCreateTask, CanExecuteCreateTask);
+            DeleteTaskCommand = new ViewModelCommand(ExecuteDeleteTask);
 
             LoadData();
         }
@@ -84,101 +74,89 @@ namespace WpfApp1.ViewModels
         public void LoadData()
         {
             var allTasks = _taskRepo.GetAllTasks();
-
             TodoTasks = new ObservableCollection<TaskModel>(allTasks.Where(t => t.Status == "К выполнению"));
             InProgressTasks = new ObservableCollection<TaskModel>(allTasks.Where(t => t.Status == "В процессе"));
             DoneTasks = new ObservableCollection<TaskModel>(allTasks.Where(t => t.Status == "Выполнено"));
 
-            OnPropertyChanged(nameof(TodoTasks));
-            OnPropertyChanged(nameof(InProgressTasks));
-            OnPropertyChanged(nameof(DoneTasks));
-
             Categories = new ObservableCollection<TaskCategoryModel>(_taskRepo.GetCategories());
-            OnPropertyChanged(nameof(Categories));
-
             LoadAvailableSoldiers();
+
+            OnPropertyChanged(nameof(TodoTasks)); OnPropertyChanged(nameof(InProgressTasks)); OnPropertyChanged(nameof(DoneTasks)); OnPropertyChanged(nameof(Categories));
         }
 
         private void LoadAvailableSoldiers()
         {
-            // Берем только тех, кто "В строю" и прямо сейчас не в наряде
-            var soldiersInFormation = _soldierRepo.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
-            var tempList = new ObservableCollection<TaskSoldierSelectionModel>();
+            var inFormation = _soldierRepo.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
 
-            // Дата следующей смены (сегодня или завтра, в зависимости от текущего времени)
+            var contractors = new ObservableCollection<TaskSoldierSelectionModel>();
+            var conscripts = new ObservableCollection<TaskSoldierSelectionModel>();
             DateTime nextShiftDate = DateTime.Now.Hour < 16 ? DateTime.Today : DateTime.Today.AddDays(1);
 
-            foreach (var soldier in soldiersInFormation)
-            {
-                // Проверяем, заступает ли он в следующую смену (через репозиторий нарядов)
-                bool isGoingOnDuty = _dutyRepo.GetBusyDatesWithInfoForSoldier(soldier.SoldierID).ContainsKey(nextShiftDate);
+            // Пустой вариант для комбобокса (если ответственный не нужен)
+            contractors.Add(new TaskSoldierSelectionModel { Soldier = new SoldierModel { LastName = "Не назначать", SoldierID = 0 }, IsEnabled = true });
 
-                tempList.Add(new TaskSoldierSelectionModel
-                {
-                    Soldier = soldier,
-                    IsGoingOnDuty = isGoingOnDuty,
-                    IsEnabled = true
-                });
+            foreach (var soldier in inFormation)
+            {
+                bool isGoingOnDuty = _dutyRepo.GetBusyDatesWithInfoForSoldier(soldier.SoldierID).ContainsKey(nextShiftDate);
+                var model = new TaskSoldierSelectionModel { Soldier = soldier, IsGoingOnDuty = isGoingOnDuty, IsEnabled = true };
+
+                if (soldier.ServiceType == "По контракту") contractors.Add(model);
+                else conscripts.Add(model);
             }
 
-            AvailableSoldiers = tempList;
-            OnPropertyChanged(nameof(AvailableSoldiers));
+            AvailableContractors = contractors;
+            AvailableConscripts = conscripts;
+            SelectedContractor = contractors.First();
+
+            OnPropertyChanged(nameof(AvailableContractors)); OnPropertyChanged(nameof(AvailableConscripts));
         }
 
         private void ValidateSoldiersByDeadline()
         {
-            if (AvailableSoldiers == null) return;
+            if (AvailableConscripts == null || AvailableContractors == null) return;
+            bool isLate = NewTaskDeadline.HasValue && NewTaskDeadline.Value.Hour >= 15; // Правило 16:00 (с запасом)
 
-            foreach (var s in AvailableSoldiers)
-            {
-                // Если дедлайн установлен, и он позже 15:00 сегодняшнего дня, 
-                // а солдат заступает в наряд — блокируем его выбор!
-                if (NewTaskDeadline.HasValue && NewTaskDeadline.Value.Hour >= 15 && s.IsGoingOnDuty)
-                {
-                    s.IsEnabled = false;
-                    s.IsSelected = false; // Снимаем галочку, если она была
-                }
-                else
-                {
-                    s.IsEnabled = true;
-                }
-            }
+            Action<TaskSoldierSelectionModel> validate = s => {
+                if (isLate && s.IsGoingOnDuty) { s.IsEnabled = false; s.IsSelected = false; } else s.IsEnabled = true;
+            };
+
+            foreach (var s in AvailableConscripts) validate(s);
+            foreach (var s in AvailableContractors) validate(s);
+
+            if (SelectedContractor != null && !SelectedContractor.IsEnabled) SelectedContractor = AvailableContractors.First();
         }
 
-        private bool CanExecuteCreateTask(object obj)
-        {
-            return !string.IsNullOrWhiteSpace(NewTaskName) && SelectedCategory != null;
-        }
+        private bool CanExecuteCreateTask(object obj) => !string.IsNullOrWhiteSpace(NewTaskName) && SelectedCategory != null;
 
         private void ExecuteCreateTask(object obj)
         {
-            var task = new TaskModel
-            {
-                TaskName = NewTaskName,
-                CategoryID = SelectedCategory.CategoryID,
-                CreationDate = DateTime.Now,
-                DueDate = NewTaskDeadline,
-                Status = "К выполнению"
-            };
+            var task = new TaskModel { TaskName = NewTaskName, CategoryID = SelectedCategory.CategoryID, CreationDate = NewTaskStartDate, DueDate = NewTaskDeadline, Status = "К выполнению" };
 
-            var selectedIds = AvailableSoldiers.Where(s => s.IsSelected).Select(s => s.Soldier.SoldierID).ToList();
+            // Собираем всех: и выбранных срочников, и ответственного контрактника (если ID != 0)
+            var selectedIds = AvailableConscripts.Where(s => s.IsSelected).Select(s => s.Soldier.SoldierID).ToList();
+            if (SelectedContractor != null && SelectedContractor.Soldier.SoldierID != 0) selectedIds.Add(SelectedContractor.Soldier.SoldierID);
 
             _taskRepo.CreateTask(task, selectedIds);
 
-            // Очищаем форму
-            NewTaskName = string.Empty;
-            SelectedCategory = null;
-            NewTaskDeadline = null;
-            foreach (var s in AvailableSoldiers) s.IsSelected = false;
+            NewTaskName = string.Empty; SelectedCategory = null; NewTaskDeadline = null; NewTaskStartDate = DateTime.Today;
+            foreach (var s in AvailableConscripts) s.IsSelected = false;
+            SelectedContractor = AvailableContractors.First();
 
-            LoadData(); // Обновляем доску
+            LoadData();
         }
 
-        // Вызывается из Code-Behind при Drag-n-Drop
-        public void ChangeTaskStatus(int taskId, string newStatus)
+        public void ChangeTaskStatus(int taskId, string newStatus) { _taskRepo.UpdateTaskStatus(taskId, newStatus); LoadData(); }
+
+        private void ExecuteDeleteTask(object obj)
         {
-            _taskRepo.UpdateTaskStatus(taskId, newStatus);
-            LoadData();
+            if (obj is int taskId)
+            {
+                if (MessageBox.Show("Удалить эту задачу навсегда?", "Удаление", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    _taskRepo.DeleteTask(taskId);
+                    LoadData();
+                }
+            }
         }
     }
 }

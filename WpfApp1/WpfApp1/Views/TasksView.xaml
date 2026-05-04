@@ -9,26 +9,40 @@
     <UserControl.Resources>
         <!-- Шаблон карточки задачи -->
         <DataTemplate x:Key="TaskCardTemplate">
-            <Border Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,10" Cursor="Hand"
+            <Border Background="White" CornerRadius="8" Margin="0,0,0,10" Cursor="Hand"
                     PreviewMouseLeftButtonDown="TaskCard_PreviewMouseLeftButtonDown"
                     MouseMove="TaskCard_MouseMove">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="8" Color="Black" Opacity="0.05" ShadowDepth="2"/>
                 </Border.Effect>
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <!-- Категория -->
-                        <Border Background="{Binding CategoryColor}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Left">
-                            <TextBlock Text="{Binding CategoryName}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                        </Border>
-                        <!-- Дедлайн -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <fa:IconImage Icon="Clock" Width="12" Height="12" Foreground="#94A3B8" Margin="0,0,5,0"/>
-                            <TextBlock Text="{Binding DeadlineText}" FontSize="11" FontWeight="SemiBold">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Шапка: Категория на всю ширину и корзина -->
+                    <Border Grid.Row="0" Background="{Binding CategoryColor}" CornerRadius="8,8,0,0" Padding="12,6">
+                        <Grid>
+                            <TextBlock Text="{Binding CategoryName}" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            <Button Command="{Binding DataContext.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                    CommandParameter="{Binding TaskHistoryID}" 
+                                    HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Удалить задачу">
+                                <fa:IconImage Icon="TrashAlt" Foreground="White" Width="12" Height="12"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Тело карточки -->
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="{Binding TaskName}" FontSize="15" FontWeight="Bold" Foreground="#1E293B" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                        <!-- Время задачи (перенесено ниже) -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                            <fa:IconImage Icon="CalendarAlt" Width="12" Height="12" Foreground="#94A3B8" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding StartDateText}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                            <TextBlock Text=" - " FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding DeadlineText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="#64748B"/>
@@ -41,22 +55,24 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </StackPanel>
-                    </Grid>
-                    <!-- Название -->
-                    <TextBlock Text="{Binding TaskName}" FontSize="15" FontWeight="Bold" Foreground="#1E293B" TextWrapping="Wrap" Margin="0,0,0,15"/>
-                    <!-- Исполнители -->
-                    <ItemsControl ItemsSource="{Binding AssignedSoldiers}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding FullName}" FontSize="12" Foreground="#64748B" Margin="0,0,0,3"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+
+                        <!-- Исполнители -->
+                        <ItemsControl ItemsSource="{Binding AssignedSoldiers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                        <TextBlock Text="• " Foreground="#94A3B8"/>
+                                        <TextBlock Text="{Binding RankName}" FontSize="11" Foreground="#94A3B8" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding FullName}" FontSize="12" Foreground="#475569" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
             </Border>
         </DataTemplate>
 
-        <!-- Стиль для ListView (Колонки Канбана) -->
         <Style x:Key="KanbanColumnStyle" TargetType="ListView">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -69,14 +85,6 @@
                         <Setter Property="Padding" Value="0"/>
                         <Setter Property="Margin" Value="0"/>
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Trigger>
-                        </Style.Triggers>
                     </Style>
                 </Setter.Value>
             </Setter>
@@ -86,16 +94,11 @@
     <Grid Margin="20">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <!-- К выполнению -->
             <ColumnDefinition Width="*"/>
-            <!-- В процессе -->
             <ColumnDefinition Width="*"/>
-            <!-- Выполнено -->
             <ColumnDefinition Width="320"/>
-            <!-- Панель создания -->
         </Grid.ColumnDefinitions>
 
-        <!-- Колонка 1: К выполнению -->
         <Border Grid.Column="0" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -103,12 +106,10 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <TextBlock Text="К выполнению" FontSize="16" FontWeight="Bold" Foreground="#475569" Margin="5,5,0,15"/>
-                <ListView Grid.Row="1" ItemsSource="{Binding TodoTasks}" ItemTemplate="{StaticResource TaskCardTemplate}" 
-                          Style="{StaticResource KanbanColumnStyle}" AllowDrop="True" Tag="К выполнению" Drop="ListView_Drop"/>
+                <ListView Grid.Row="1" ItemsSource="{Binding TodoTasks}" ItemTemplate="{StaticResource TaskCardTemplate}" Style="{StaticResource KanbanColumnStyle}" AllowDrop="True" Tag="К выполнению" Drop="ListView_Drop"/>
             </Grid>
         </Border>
 
-        <!-- Колонка 2: В процессе -->
         <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -116,12 +117,10 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <TextBlock Text="В процессе" FontSize="16" FontWeight="Bold" Foreground="#3B82F6" Margin="5,5,0,15"/>
-                <ListView Grid.Row="1" ItemsSource="{Binding InProgressTasks}" ItemTemplate="{StaticResource TaskCardTemplate}" 
-                          Style="{StaticResource KanbanColumnStyle}" AllowDrop="True" Tag="В процессе" Drop="ListView_Drop"/>
+                <ListView Grid.Row="1" ItemsSource="{Binding InProgressTasks}" ItemTemplate="{StaticResource TaskCardTemplate}" Style="{StaticResource KanbanColumnStyle}" AllowDrop="True" Tag="В процессе" Drop="ListView_Drop"/>
             </Grid>
         </Border>
 
-        <!-- Колонка 3: Выполнено -->
         <Border Grid.Column="2" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -129,12 +128,10 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <TextBlock Text="Выполнено" FontSize="16" FontWeight="Bold" Foreground="#10B981" Margin="5,5,0,15"/>
-                <ListView Grid.Row="1" ItemsSource="{Binding DoneTasks}" ItemTemplate="{StaticResource TaskCardTemplate}" 
-                          Style="{StaticResource KanbanColumnStyle}" AllowDrop="True" Tag="Выполнено" Drop="ListView_Drop"/>
+                <ListView Grid.Row="1" ItemsSource="{Binding DoneTasks}" ItemTemplate="{StaticResource TaskCardTemplate}" Style="{StaticResource KanbanColumnStyle}" AllowDrop="True" Tag="Выполнено" Drop="ListView_Drop"/>
             </Grid>
         </Border>
 
-        <!-- Панель создания задачи -->
         <Border Grid.Column="3" Background="White" CornerRadius="10" Padding="20">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
@@ -156,12 +153,34 @@
                         <TextBlock Text="Категория:" Foreground="Gray" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="CategoryName" Margin="0,5,0,15" Height="30"/>
 
-                        <TextBlock Text="Дедлайн (до какого времени):" Foreground="Gray" FontSize="12"/>
-                        <!-- Используем DateTimePicker, если есть из пакетов, или обычный TextBox/DatePicker -->
-                        <DatePicker SelectedDate="{Binding NewTaskDeadline, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,20" Height="30"/>
+                        <!-- Блок с датами -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Начало:" Foreground="Gray" FontSize="12"/>
+                                <DatePicker SelectedDate="{Binding NewTaskStartDate}" Margin="0,5,0,0" Height="30"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Дедлайн:" Foreground="Gray" FontSize="12"/>
+                                <DatePicker SelectedDate="{Binding NewTaskDeadline, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,0" Height="30"/>
+                            </StackPanel>
+                        </Grid>
 
-                        <TextBlock Text="Назначить свободных бойцов:" Foreground="Gray" FontSize="12" Margin="0,0,0,10"/>
-                        <ItemsControl ItemsSource="{Binding AvailableSoldiers}">
+                        <TextBlock Text="Ответственный (контракт):" Foreground="Gray" FontSize="12"/>
+                        <ComboBox ItemsSource="{Binding AvailableContractors}" SelectedItem="{Binding SelectedContractor}" Margin="0,5,0,15" Height="30">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Soldier.LastName}" Foreground="{Binding StatusColor}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <TextBlock Text="Исполнители (срочники):" Foreground="Gray" FontSize="12" Margin="0,0,0,10"/>
+                        <ItemsControl ItemsSource="{Binding AvailableConscripts}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsEnabled}" Margin="0,0,0,8" ToolTip="{Binding TooltipText}">

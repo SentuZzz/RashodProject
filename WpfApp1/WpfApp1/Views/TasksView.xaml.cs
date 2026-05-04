@@ -15,10 +15,25 @@ namespace WpfApp1.Views
             InitializeComponent();
         }
 
-        // Ловим момент нажатия на карточку
         private void TaskCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // Игнорируем нажатие, если кликнули по кнопке (например, по корзине)
+            if (e.OriginalSource is DependencyObject source)
+            {
+                var button = FindParent<Button>(source);
+                if (button != null) return;
+            }
+
             _startPoint = e.GetPosition(null);
+        }
+
+        // Вспомогательный метод для поиска родителя-кнопки
+        private static T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            DependencyObject parentObject = System.Windows.Media.VisualTreeHelper.GetParent(child);
+            if (parentObject == null) return null;
+            if (parentObject is T parent) return parent;
+            return FindParent<T>(parentObject);
         }
 
         // Проверяем, достаточно ли далеко сдвинули мышку, чтобы начать перетаскивание
