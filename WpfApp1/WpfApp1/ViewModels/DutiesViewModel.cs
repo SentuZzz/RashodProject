@@ -11,6 +11,7 @@ namespace WpfApp1.ViewModels
 {
     public class DutiesViewModel : ViewModelBase
     {
+        public DateTime MinAllowedDate => DateTime.Today.AddDays(-1);
         private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
         public Dictionary<DateTime, string> BusyDatesInfo
         {
@@ -141,6 +142,11 @@ namespace WpfApp1.ViewModels
         {
             try
             {
+                if (SelectedDate.Date < MinAllowedDate.Date)
+                {
+                    MessageBox.Show("Нельзя назначать наряды задним числом!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
                 var rule = _dutyRepository.DutyRules[SelectedDuty.DutyID];
                 int capacity = rule.Capacity;
                 int duration = rule.Duration;

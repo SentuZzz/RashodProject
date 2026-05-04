@@ -161,7 +161,7 @@
                                 <ComboBox ItemsSource="{Binding AvailableDuties}" SelectedItem="{Binding SelectedDuty}" DisplayMemberPath="DutyName" Margin="0,5,0,15" Height="30" Padding="5"/>
 
                                 <TextBlock Text="Дата заступления:" Foreground="Gray" FontSize="12"/>
-                                <DatePicker SelectedDate="{Binding SelectedDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Margin="0,5,0,20" Height="30">
+                                <DatePicker SelectedDate="{Binding SelectedDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" DisplayDateStart="{Binding MinAllowedDate, Mode=OneWay}" Margin="0,5,0,20" Height="30">
                                     <DatePicker.CalendarStyle>
                                         <Style TargetType="Calendar">
                                             <Setter Property="CalendarDayButtonStyle">

@@ -152,7 +152,7 @@
 
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Конец:" Foreground="Gray" FontSize="12"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0">
+                                    <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate, Mode=OneWay}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0">
                                         <DatePicker.CalendarStyle>
                                             <Style TargetType="Calendar">
                                                 <Setter Property="CalendarDayButtonStyle">
