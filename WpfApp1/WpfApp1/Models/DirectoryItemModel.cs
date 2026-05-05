@@ -8,9 +8,10 @@
         // Специфичные поля для нарядов
         public int Priority { get; set; }
         public bool IsDuty { get; set; }
-
-        // НОВОЕ ПОЛЕ: Место (категория) наряда
         public string Location { get; set; }
+
+        // НОВОЕ ПОЛЕ: Квота (сколько человек заступает в этот наряд)
+        public int Capacity { get; set; }
 
         public string PriorityText => Priority == 1 ? "Офицеры/Прапорщики" : (Priority == 2 ? "Сержанты" : "Рядовой состав");
 

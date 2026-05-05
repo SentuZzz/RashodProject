@@ -27,9 +27,12 @@ namespace WpfApp1.ViewModels
         private string _newItemName;
         public string NewItemName { get => _newItemName; set { _newItemName = value; OnPropertyChanged(); } }
 
-        // НОВОЕ ПОЛЕ: Локация
         private string _newDutyLocation = "По роте";
         public string NewDutyLocation { get => _newDutyLocation; set { _newDutyLocation = value; OnPropertyChanged(); } }
+
+        // НОВОЕ ПОЛЕ: Квота (Сколько человек)
+        private string _newDutyCapacity = "1";
+        public string NewDutyCapacity { get => _newDutyCapacity; set { _newDutyCapacity = value; OnPropertyChanged(); } }
 
         private PriorityOption _selectedPriority;
         public PriorityOption SelectedPriority { get => _selectedPriority; set { _selectedPriority = value; OnPropertyChanged(); } }
@@ -78,28 +81,44 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteSaveItem(object obj)
         {
-            // ЗАЩИТА ОТ ДУБЛИКАТОВ
-            if (!IsEditing && CurrentItems.Any(x => x.Name.Equals(NewItemName, StringComparison.OrdinalIgnoreCase)))
+            if (!IsEditing && CurrentItems.Any(x => x.Name.Equals(NewItemName?.Trim(), StringComparison.OrdinalIgnoreCase)))
             {
                 MessageBox.Show("Такая запись уже существует в справочнике!", "Ошибка дублирования", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            if (IsEditing)
+            int capacity = 1;
+            if (SelectedMenu == "Виды нарядов")
             {
-                if (SelectedMenu == "Виды нарядов") _repo.UpdateDuty(_editingItemId, NewItemName, SelectedPriority.Value, NewDutyLocation);
-                else _repo.UpdateItem(CurrentItems.First().TableName, CurrentItems.First().IdColumnName, CurrentItems.First().NameColumnName, _editingItemId, NewItemName);
-            }
-            else
-            {
-                if (SelectedMenu == "Виды нарядов") _repo.AddDuty(NewItemName, SelectedPriority.Value, NewDutyLocation);
-                else if (SelectedMenu == "Подразделения") _repo.AddItem("Units", "UnitName", NewItemName);
-                else if (SelectedMenu == "Звания") _repo.AddItem("Ranks", "RankName", NewItemName);
-                else if (SelectedMenu == "Должности") _repo.AddItem("Positions", "PositionName", NewItemName);
-                else if (SelectedMenu == "Категории задач") _repo.AddItem("TaskCategories", "CategoryName", NewItemName);
+                if (!int.TryParse(NewDutyCapacity, out capacity) || capacity < 1)
+                {
+                    MessageBox.Show("Количество человек должно быть целым числом больше нуля!", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
             }
 
-            ResetForm(); LoadDictionary(); AppMessenger.BroadcastDirectoriesUpdated();
+            try
+            {
+                if (IsEditing)
+                {
+                    if (SelectedMenu == "Виды нарядов") _repo.UpdateDuty(_editingItemId, NewItemName, SelectedPriority.Value, NewDutyLocation, capacity);
+                    else _repo.UpdateItem(CurrentItems.First().TableName, CurrentItems.First().IdColumnName, CurrentItems.First().NameColumnName, _editingItemId, NewItemName);
+                }
+                else
+                {
+                    if (SelectedMenu == "Виды нарядов") _repo.AddDuty(NewItemName, SelectedPriority.Value, NewDutyLocation, capacity);
+                    else if (SelectedMenu == "Подразделения") _repo.AddItem("Units", "UnitName", NewItemName);
+                    else if (SelectedMenu == "Звания") _repo.AddItem("Ranks", "RankName", NewItemName);
+                    else if (SelectedMenu == "Должности") _repo.AddItem("Positions", "PositionName", NewItemName);
+                    else if (SelectedMenu == "Категории задач") _repo.AddItem("TaskCategories", "CategoryName", NewItemName);
+                }
+
+                ResetForm(); LoadDictionary(); AppMessenger.BroadcastDirectoriesUpdated();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Произошла ошибка при сохранении: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ExecuteEditItem(object obj)
@@ -111,13 +130,14 @@ namespace WpfApp1.ViewModels
                 {
                     SelectedPriority = PriorityOptions.FirstOrDefault(p => p.Value == item.Priority) ?? PriorityOptions.First();
                     NewDutyLocation = item.Location;
+                    NewDutyCapacity = item.Capacity.ToString();
                 }
             }
         }
 
         private void ResetForm()
         {
-            IsEditing = false; NewItemName = string.Empty; NewDutyLocation = "По роте"; SelectedPriority = PriorityOptions.First();
+            IsEditing = false; NewItemName = string.Empty; NewDutyLocation = "По роте"; NewDutyCapacity = "1"; SelectedPriority = PriorityOptions.First();
         }
 
         private void ExecuteDeleteItem(object obj)
@@ -126,9 +146,16 @@ namespace WpfApp1.ViewModels
             {
                 if (MessageBox.Show($"Удалить '{item.Name}'?", "Внимание", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
-                    _repo.DeleteItem(item.TableName, item.IdColumnName, item.Id);
-                    if (IsEditing && _editingItemId == item.Id) ResetForm();
-                    LoadDictionary(); AppMessenger.BroadcastDirectoriesUpdated();
+                    try
+                    {
+                        _repo.DeleteItem(item.TableName, item.IdColumnName, item.Id);
+                        if (IsEditing && _editingItemId == item.Id) ResetForm();
+                        LoadDictionary(); AppMessenger.BroadcastDirectoriesUpdated();
+                    }
+                    catch (Exception) // Защита от падения при удалении используемых данных
+                    {
+                        MessageBox.Show("Невозможно удалить этот элемент, так как он уже назначен бойцам или используется в истории нарядов/задач.\n\nПожалуйста, переведите людей на другие должности или отредактируйте это название (вместо удаления).", "Удаление запрещено", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             }
         }

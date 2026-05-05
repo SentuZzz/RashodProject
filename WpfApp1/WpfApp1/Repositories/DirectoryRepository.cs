@@ -14,8 +14,9 @@ namespace WpfApp1.Repositories
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                // Пробуем безопасно добавить колонку Location (если она уже есть, try-catch просто проглотит ошибку)
+                // Пробуем безопасно добавить колонки Location и Capacity (Квота)
                 try { db.Execute("ALTER TABLE Duties ADD COLUMN Location TEXT DEFAULT 'Общее'"); } catch { }
+                try { db.Execute("ALTER TABLE Duties ADD COLUMN Capacity INTEGER DEFAULT 1"); } catch { }
             }
         }
 
@@ -23,11 +24,9 @@ namespace WpfApp1.Repositories
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                // Вытаскиваем нужную таблицу и подстраиваем её под нашу универсальную модель
                 string sql = $"SELECT {idCol} AS Id, {nameCol} AS Name FROM {tableName} ORDER BY {idCol}";
                 var items = db.Query<DirectoryItemModel>(sql).ToList();
 
-                // Запоминаем, откуда мы это взяли (чтобы потом уметь удалять)
                 items.ForEach(i => { i.TableName = tableName; i.IdColumnName = idCol; i.NameColumnName = nameCol; });
                 return items;
             }
@@ -38,7 +37,7 @@ namespace WpfApp1.Repositories
             using (var db = new SQLiteConnection(_connectionString))
             {
                 string sql = $"INSERT INTO {tableName} ({nameCol}) VALUES (@Name)";
-                db.Execute(sql, new { Name = nameValue });
+                db.Execute(sql, new { Name = nameValue?.Trim() }); // .Trim() убирает случайные пробелы по краям
             }
         }
 
@@ -56,36 +55,53 @@ namespace WpfApp1.Repositories
             using (var db = new SQLiteConnection(_connectionString))
             {
                 string sql = $"UPDATE {tableName} SET {nameCol} = @Name WHERE {idCol} = @Id";
-                db.Execute(sql, new { Name = newName, Id = idValue });
+                db.Execute(sql, new { Name = newName?.Trim(), Id = idValue });
             }
         }
+
+        // --- МЕТОДЫ ДЛЯ НАРЯДОВ ---
 
         public List<DirectoryItemModel> GetDuties()
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                string sql = "SELECT DutyID AS Id, DutyName AS Name, RolePriority AS Priority, Location FROM Duties ORDER BY Location, RolePriority";
+                // Теперь мы вытаскиваем еще и Capacity из базы!
+                string sql = "SELECT DutyID AS Id, DutyName AS Name, RolePriority AS Priority, Location, Capacity FROM Duties ORDER BY Location, RolePriority";
                 var items = db.Query<DirectoryItemModel>(sql).ToList();
+
                 items.ForEach(i => { i.TableName = "Duties"; i.IdColumnName = "DutyID"; i.IsDuty = true; });
                 return items;
             }
         }
 
-        public void AddDuty(string nameValue, int priorityValue, string locationValue)
+        public void AddDuty(string nameValue, int priorityValue, string locationValue, int capacityValue)
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                string sql = "INSERT INTO Duties (DutyName, RolePriority, Location) VALUES (@Name, @Priority, @Location)";
-                db.Execute(sql, new { Name = nameValue, Priority = priorityValue, Location = locationValue ?? "Общее" });
+                string sql = "INSERT INTO Duties (DutyName, RolePriority, Location, Capacity) VALUES (@Name, @Priority, @Location, @Capacity)";
+                db.Execute(sql, new
+                {
+                    Name = nameValue?.Trim(),
+                    Priority = priorityValue,
+                    Location = string.IsNullOrWhiteSpace(locationValue) ? "Общее" : locationValue.Trim(),
+                    Capacity = capacityValue
+                });
             }
         }
 
-        public void UpdateDuty(int idValue, string newName, int newPriority, string newLocation)
+        public void UpdateDuty(int idValue, string newName, int newPriority, string newLocation, int newCapacity)
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                string sql = "UPDATE Duties SET DutyName = @Name, RolePriority = @Priority, Location = @Location WHERE DutyID = @Id";
-                db.Execute(sql, new { Name = newName, Priority = newPriority, Location = newLocation ?? "Общее", Id = idValue });
+                string sql = "UPDATE Duties SET DutyName = @Name, RolePriority = @Priority, Location = @Location, Capacity = @Capacity WHERE DutyID = @Id";
+                db.Execute(sql, new
+                {
+                    Name = newName?.Trim(),
+                    Priority = newPriority,
+                    Location = string.IsNullOrWhiteSpace(newLocation) ? "Общее" : newLocation.Trim(),
+                    Capacity = newCapacity,
+                    Id = idValue
+                });
             }
         }
     }

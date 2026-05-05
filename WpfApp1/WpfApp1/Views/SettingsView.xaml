@@ -54,6 +54,7 @@
             </StackPanel>
         </Border>
 
+        <!-- Правая часть (Контент справочника) -->
         <Border Grid.Column="1" Background="White" CornerRadius="10" Padding="25">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
@@ -75,7 +76,6 @@
                                     <Grid>
                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontSize="16" Foreground="#334155" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                            <!-- Этот блок виден только для нарядов -->
                                             <Border Background="#E0E7FF" CornerRadius="6" Padding="8,2" Margin="15,0,0,0" VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
@@ -87,15 +87,14 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <!-- ВЫВОДИМ ЛОКАЦИЮ И ПРИОРИТЕТ -->
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Location, StringFormat='Место: {0} | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
-                                                    <TextBlock Text="{Binding PriorityText, StringFormat='Категория: {0}'}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Location, StringFormat=' {0} | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Capacity, StringFormat=' {0} чел. | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding PriorityText, StringFormat=' {0}'}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
 
-                                        <!-- Кнопки действий -->
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                             <Button Command="{Binding DataContext.EditItemCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                                      CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Редактировать" Margin="0,0,10,0">
@@ -113,7 +112,7 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <!-- Форма добавления/редактирования (ОБЫЧНЫЕ СПРАВОЧНИКИ) -->
+                <!-- Форма добавления (ОБЫЧНЫЕ СПРАВОЧНИКИ) -->
                 <Border Grid.Row="2" Visibility="{Binding SimpleFormVisibility}" Background="#F1F5F9" CornerRadius="8" Padding="15" Margin="0,20,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -147,7 +146,7 @@
                     </Grid>
                 </Border>
 
-                <!-- Форма добавления/редактирования (ДЛЯ НАРЯДОВ) -->
+                <!-- Форма добавления (ДЛЯ НАРЯДОВ - ОБНОВЛЕННАЯ С КВОТОЙ) -->
                 <Border Grid.Row="2" Visibility="{Binding DutyFormVisibility}" Background="#F1F5F9" CornerRadius="8" Padding="15" Margin="0,20,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -157,12 +156,13 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                            <!-- Первая строка полей -->
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="2*"/>
                                     <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="1.5*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="80"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Название наряда:" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
@@ -184,8 +184,18 @@
                                         </TextBox.Resources>
                                     </TextBox>
                                 </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Человек:" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding NewDutyCapacity, UpdateSourceTrigger=PropertyChanged}" Height="35" Padding="10,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="14">
+                                        <TextBox.Resources>
+                                            <Style TargetType="Border">
+                                                <Setter Property="CornerRadius" Value="6"/>
+                                            </Style>
+                                        </TextBox.Resources>
+                                    </TextBox>
+                                </StackPanel>
                             </Grid>
-                            <!-- Вторая строка полей -->
+
                             <TextBlock Text="Кто заступает (Категория):" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
                             <ComboBox ItemsSource="{Binding PriorityOptions}" SelectedItem="{Binding SelectedPriority}" DisplayMemberPath="Title" Height="35"/>
                         </StackPanel>

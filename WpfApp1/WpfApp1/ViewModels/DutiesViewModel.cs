@@ -13,12 +13,14 @@ namespace WpfApp1.ViewModels
     public class DutiesViewModel : ViewModelBase
     {
         public DateTime MinAllowedDate => DateTime.Today.AddDays(-1);
+
         private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
         public Dictionary<DateTime, string> BusyDatesInfo
         {
             get { return _busyDatesInfo; }
             set { _busyDatesInfo = value; OnPropertyChanged(); }
         }
+
         private readonly SoldierRepository _repository;
         private readonly DutyRepository _dutyRepository;
 
@@ -48,7 +50,6 @@ namespace WpfApp1.ViewModels
             set { _dailyDutiesStatus = value; OnPropertyChanged(); }
         }
 
-        // Дата для внеочередного наряда
         private DateTime _customAssignDate = DateTime.Today;
         public DateTime CustomAssignDate
         {
@@ -56,7 +57,6 @@ namespace WpfApp1.ViewModels
             set { _customAssignDate = value; OnPropertyChanged(); }
         }
 
-        // Видимость дополнительного календарика
         private bool _isCustomDateVisible;
         public bool IsCustomDateVisible
         {
@@ -64,10 +64,11 @@ namespace WpfApp1.ViewModels
             set { _isCustomDateVisible = value; OnPropertyChanged(); }
         }
 
-        // Команда для нажатия на кнопку "Плюс"
         public ICommand ToggleCustomDateCommand { get; }
+
         public ObservableCollection<SoldierModel> Soldiers { get; set; }
         public ObservableCollection<DutyModel> AvailableDuties { get; set; }
+
         private List<DutyModel> _allDuties;
 
         private SoldierModel _selectedSoldier;
@@ -111,12 +112,13 @@ namespace WpfApp1.ViewModels
             AvailableDuties = new ObservableCollection<DutyModel>();
 
             AssignDutyCommand = new ViewModelCommand(ExecuteAssignDuty, CanExecuteAssignDuty);
+
             UpdateDailyStatus();
             LoadData();
+
             AppMessenger.DirectoriesUpdated += () =>
             {
-                // Перезагружаем виды нарядов, солдат и статусы
-                UpdateDailyStatus();
+                _allDuties = _dutyRepository.GetDuties(); // Подгружаем свежие наряды
                 LoadData();
                 LoadSoldiers();
                 UpdateDailyStatus();
@@ -126,7 +128,6 @@ namespace WpfApp1.ViewModels
         private void LoadData()
         {
             var data = _repository.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю").ToList();
-
             if (Soldiers == null)
             {
                 Soldiers = new ObservableCollection<SoldierModel>(data);
@@ -140,12 +141,10 @@ namespace WpfApp1.ViewModels
                 }
             }
         }
+
         private void LoadSoldiers()
         {
-            // Передаем глобальную выбранную дату из календаря!
             var allSoldiers = _repository.GetAllSoldiers(SelectedDate);
-
-            // Фильтруем, если нажата галочка
             if (HideUnavailable)
             {
                 allSoldiers = allSoldiers.Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
@@ -164,11 +163,13 @@ namespace WpfApp1.ViewModels
                 }
             }
         }
+
         private void UpdateDailyStatus()
         {
             DailyDutiesStatus = new ObservableCollection<DashboardDutyModel>(
                 _dutyRepository.GetDutiesStatusForDate(SelectedDate));
         }
+
         private bool CanExecuteAssignDuty(object obj)
         {
             return SelectedSoldier != null && SelectedDuty != null;
@@ -177,36 +178,36 @@ namespace WpfApp1.ViewModels
         private void ExecuteAssignDuty(object obj)
         {
             DateTime targetDate = IsCustomDateVisible ? CustomAssignDate : SelectedDate;
+
             if (targetDate.Date < DateTime.Today.AddDays(-1))
             {
-                MessageBox.Show("Нельзя назначать наряды задним числом! Разрешены только текущая и предыдущая смены.",
-                                "Отмена операции", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Нельзя назначить наряд в прошлое!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
             try
             {
-                var rule = _dutyRepository.DutyRules[SelectedDuty.DutyID];
-                int capacity = rule.Capacity;
-                int duration = rule.Duration;
+                // Берем квоту напрямую из модели
+                int capacity = SelectedDuty.Capacity;
+                int duration = 1; // Убрали хардкод, длительность по умолчанию 1 сутки
 
                 var allBusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
 
                 for (int i = 0; i < duration; i++)
                 {
                     DateTime checkDate = targetDate.AddDays(i).Date;
-
                     if (allBusyDatesInfo.ContainsKey(checkDate))
                     {
                         string reason = allBusyDatesInfo[checkDate];
-                        MessageBox.Show($"Дата {checkDate.ToShortDateString()} недоступна!\nПричина: {reason}",
-                                        "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show($"Боец не может заступить {checkDate.ToShortDateString()}. Причина: {reason}",
+                                        "Конфликт", MessageBoxButton.OK, MessageBoxImage.Warning);
                         UpdateBusyDates();
                         return;
                     }
 
                     if (_dutyRepository.IsCapacityFull(SelectedDuty.DutyID, checkDate, capacity))
                     {
-                        MessageBox.Show($"На {checkDate.ToShortDateString()} наряд «{SelectedDuty.DutyName}» уже полностью укомплектован ({capacity} чел.).", "Нет мест", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show($"На {checkDate.ToShortDateString()} наряд {SelectedDuty.DutyName} уже укомплектован ({capacity} чел.).", "Квота заполнена", MessageBoxButton.OK, MessageBoxImage.Warning);
                         UpdateBusyDates();
                         return;
                     }
@@ -214,27 +215,29 @@ namespace WpfApp1.ViewModels
 
                 if (_dutyRepository.HasRestViolation(SelectedSoldier.SoldierID, targetDate, duration))
                 {
-                    MessageBox.Show($"Нарушение режима!\nУ военнослужащего возникает накладка на другие наряды, либо не соблюден интервал отдыха (1 сутки до и после наряда).", "Отказ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show($"Нарушение отдыха: Боец заступал вчера (менее 1 суток отдыха).", "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
                     UpdateBusyDates();
                     return;
                 }
 
-                _dutyRepository.AssignDuty(SelectedSoldier.SoldierID, SelectedDuty.DutyID, targetDate, duration); // <-- Заменили
+                _dutyRepository.AssignDuty(SelectedSoldier.SoldierID, SelectedDuty.DutyID, targetDate, duration);
 
-                string daysText = duration > 1 ? $"на {duration} суток" : "";
-                MessageBox.Show($"Боец {SelectedSoldier.LastName} назначен в наряд {SelectedDuty.DutyName} {daysText} (дата заступления {targetDate.ToShortDateString()})!",
-                                "Успешно", MessageBoxButton.OK, MessageBoxImage.Information);
+                string daysText = duration > 1 ? $" на {duration} суток" : "";
+                MessageBox.Show($"Боец {SelectedSoldier.LastName} назначен в наряд {SelectedDuty.DutyName}{daysText} (с {targetDate.ToShortDateString()})!",
+                                "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
                 IsCustomDateVisible = false;
                 CustomAssignDate = SelectedDate;
 
                 UpdateDailyStatus();
                 RefreshView();
+
+                // Обновляем чеклисты везде
                 AppMessenger.BroadcastDutiesUpdated();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при назначении: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка базы данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                 UpdateBusyDates();
             }
         }
@@ -246,13 +249,14 @@ namespace WpfApp1.ViewModels
 
             if (_selectedSoldier == null) return;
 
+            // Сортируем: контрактники видят наряды 1 и 2 приоритета, срочники - 2 и 3.
             foreach (var duty in _allDuties)
             {
-                if (_selectedSoldier.ServiceType == "По контракту" && duty.DutyID <= 5)
+                if (_selectedSoldier.ServiceType == "По контракту" && duty.RolePriority <= 2)
                 {
                     AvailableDuties.Add(duty);
                 }
-                else if (_selectedSoldier.ServiceType == "По призыву" && duty.DutyID >= 6)
+                else if (_selectedSoldier.ServiceType == "По призыву" && duty.RolePriority >= 2)
                 {
                     AvailableDuties.Add(duty);
                 }
@@ -275,7 +279,6 @@ namespace WpfApp1.ViewModels
         {
             SelectedSoldier = null;
             SelectedDuty = null;
-            //SelectedDate = DateTime.Today;
             LoadData();
         }
     }

@@ -10,24 +10,20 @@
     <Grid Margin="25">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- Шапка с часами -->
             <RowDefinition Height="Auto"/>
-            <!-- Карточки статистики -->
             <RowDefinition Height="*"/>
-            <!-- Место под наряды на завтра -->
         </Grid.RowDefinitions>
 
-        <!-- 1. ШАПКА И ЖИВЫЕ ЧАСЫ -->
+        <!-- 1. Шапка -->
         <Grid Grid.Row="0" Margin="0,0,0,25">
-            <TextBlock Text="ГЛАВНАЯ ПАНЕЛЬ" FontSize="26" FontWeight="Bold" Foreground="{StaticResource secondaryBackBrush}" VerticalAlignment="Center"/>
-
+            <TextBlock Text="Главная панель" FontSize="26" FontWeight="Bold" Foreground="{StaticResource secondaryBackBrush}" VerticalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <TextBlock Text="{Binding CurrentDate}" FontSize="16" Foreground="#7F8C8D" Margin="0,0,15,3" VerticalAlignment="Bottom"/>
                 <TextBlock Text="{Binding CurrentTime}" FontSize="28" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Bottom"/>
             </StackPanel>
         </Grid>
 
-        <!-- 2. КАРТОЧКИ СТАТИСТИКИ (БЛОК 1) -->
+        <!-- 2. Статистика -->
         <Grid Grid.Row="1" Margin="0,0,0,20">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -39,7 +35,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Карточка 1: По списку -->
+            <!-- Карточка 1: Всего по списку -->
             <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="20">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -53,7 +49,7 @@
                         <fa:IconImage Icon="Users" Foreground="#475569" Width="24" Height="24"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="По списку" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="Всего по списку" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding TotalCount}" FontSize="26" FontWeight="Bold" Foreground="#1E293B" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
@@ -73,7 +69,7 @@
                         <fa:IconImage Icon="UserCheck" Foreground="#16A34A" Width="24" Height="24"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="В строю (налицо)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="В строю (Свободны)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding InFormationCount}" FontSize="26" FontWeight="Bold" Foreground="#1E293B" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
@@ -127,17 +123,14 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ЛЕВАЯ ЧАСТЬ: НАРЯДЫ НА ЗАВТРА (Тревожная панель) -->
-            <!-- ЛЕВАЯ ЧАСТЬ: КОНТРОЛЬ И ТЕКУЩИЕ НАРЯДЫ -->
+            <!-- ЛЕВАЯ КОЛОНКА (Наряды) -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <!-- Чеклист планирования -->
                     <RowDefinition Height="*"/>
-                    <!-- Карточки текущих нарядов -->
                 </Grid.RowDefinitions>
 
-                <!-- БЛОК 1: ЧЕК-ЛИСТ ПЛАНИРОВАНИЯ -->
+                <!-- Блок 1: Планируемые наряды (Чеклист) -->
                 <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,15">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -146,11 +139,11 @@
                         <Grid Margin="0,0,0,15">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <fa:IconImage Icon="Bell" Foreground="#F59E0B" Width="20" Height="20" Margin="0,0,10,0"/>
-                                <TextBlock Text="ПЛАНИРОВАНИЕ НАРЯДОВ (КОНТРОЛЬ)" FontSize="16" FontWeight="Bold" Foreground="#344E41"/>
+                                <TextBlock Text="Планирование (Завтра)" FontSize="16" FontWeight="Bold" Foreground="#344E41"/>
                             </StackPanel>
-                            <!-- Кнопка раскрытия списка -->
+                            <!-- Кнопка разворачивания списка -->
                             <Button Content="{Binding ToggleChecklistText}" Command="{Binding ToggleChecklistCommand}" 
-                                    HorizontalAlignment="Right" Background="Transparent" Foreground="#3B82F6" BorderThickness="0" Cursor="Hand"/>
+                                     HorizontalAlignment="Right" Background="Transparent" Foreground="#3B82F6" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
 
                         <ScrollViewer MaxHeight="250" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
@@ -183,23 +176,18 @@
                     </StackPanel>
                 </Border>
 
-                <!-- БЛОК 2: КАРТОЧКИ ТЕКУЩИХ НАРЯДОВ В 2 КОЛОНКИ -->
+                <!-- Блок 2: Активные наряды -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                     <ItemsControl ItemsSource="{Binding ActiveDutyCards}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <!-- Вот она - сетка на 2 колонки! -->
-                                <UniformGrid Columns="2" HorizontalAlignment="Stretch"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                        <!-- Мы убрали ItemsPanelTemplate с UniformGrid. Теперь элементы будут просто идти списком друг под другом -->
 
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <!-- Карточка наряда -->
-                                <Border Background="#9CA3AF" CornerRadius="8" Padding="15" Margin="0,0,15,15" VerticalAlignment="Top">
+                                <Border Background="#9CA3AF" CornerRadius="8" Padding="15" Margin="0,0,0,15" VerticalAlignment="Top">
                                     <Border.Effect>
                                         <DropShadowEffect BlurRadius="8" Color="Black" Opacity="0.1" ShadowDepth="2"/>
                                     </Border.Effect>
+
                                     <Grid Grid.IsSharedSizeScope="True">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
@@ -207,37 +195,28 @@
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
 
-                                        <!-- Заголовок ГРУППЫ наряда (Наряд по роте) -->
                                         <TextBlock Grid.Row="0" Text="{Binding GroupName}" FontSize="16" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,15"/>
 
-                                        <!-- Список должностей и бойцов -->
                                         <ItemsControl Grid.Row="1" ItemsSource="{Binding PersonnelRoles}" Margin="0,0,0,20">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="0,3">
                                                         <Grid.ColumnDefinitions>
-                                                            <!-- Убрали Auto и SharedSizeGroup. Задали жесткую пропорцию (примерно 45% на 55%) -->
                                                             <ColumnDefinition Width="1*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="1.2*"/>
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- Название должности (добавили TextWrapping="Wrap", чтобы длинные должности переносились аккуратно) -->
                                                         <TextBlock Grid.Column="0" Text="{Binding RoleName}" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
-
-                                                        <!-- Вертикальная линия-разделитель -->
                                                         <Border Grid.Column="1" Width="2" Background="#D1D5DB" Margin="8,0" CornerRadius="1"/>
-
-                                                        <!-- Звание и ФИО -->
                                                         <TextBlock Grid.Column="2" Text="{Binding PersonnelName}" Foreground="White" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
 
-                                        <!-- Нижняя панель с датами -->
                                         <Grid Grid.Row="2">
-                                                <Border Background="#4D7C5F" CornerRadius="4" Padding="15,4" HorizontalAlignment="Right">
+                                            <Border Background="#4D7C5F" CornerRadius="4" Padding="15,4" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding ShiftPeriod}" Foreground="White" FontWeight="Bold" FontSize="12"/>
                                             </Border>
                                         </Grid>
@@ -246,7 +225,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
 
-                        <!-- Заглушка, если карточек 0 -->
+                        <!-- Заглушка, если нарядов нет -->
                         <ItemsControl.Style>
                             <Style TargetType="ItemsControl">
                                 <Style.Triggers>
@@ -256,7 +235,7 @@
                                                 <ControlTemplate>
                                                     <StackPanel HorizontalAlignment="Center" Margin="0,40,0,0">
                                                         <fa:IconImage Icon="ShieldBlank" Foreground="#CBD5E1" Width="48" Height="48" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="На текущую смену наряды не назначены" Foreground="#94A3B8" FontSize="14" FontWeight="SemiBold" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="Наряды отсутствуют" Foreground="#94A3B8" FontSize="14" FontWeight="SemiBold" Margin="0,10,0,0" HorizontalAlignment="Center"/>
                                                     </StackPanel>
                                                 </ControlTemplate>
                                             </Setter.Value>
@@ -269,7 +248,7 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- ПРАВАЯ ЧАСТЬ: БЛИЖАЙШИЕ УВЕДОМЛЕНИЯ (Заглушка для следующего шага) -->
+            <!-- ПРАВАЯ КОЛОНКА (События/Статусы) -->
             <Border Grid.Column="2" Background="White" CornerRadius="12" Padding="20">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -282,7 +261,7 @@
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
                         <fa:IconImage Icon="CalendarAlt" Foreground="#3B82F6" Width="20" Height="20" Margin="0,0,10,0"/>
-                        <TextBlock Text="УВЕДОМЛЕНИЯ" FontSize="16" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center"/>
+                        <TextBlock Text="Ближайшие события" FontSize="16" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
@@ -292,19 +271,14 @@
                                     <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="0,12">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <!-- 1. Увеличили ширину до 85, чтобы влезло "Послезавтра" -->
                                                 <ColumnDefinition Width="85"/>
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Дата -->
-                                            <!-- 2. Убрали HorizontalAlignment="Left", чтобы плашки были строго одинаковой ширины -->
                                             <Border Grid.Column="0" Background="#F1F5F9" CornerRadius="4" Padding="2,5" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding DateString}" FontSize="11" FontWeight="Bold" Foreground="#64748B" HorizontalAlignment="Center"/>
                                             </Border>
 
-                                            <!-- Текст уведомления -->
-                                            <!-- Немного увеличили левый отступ (Margin) для красоты -->
                                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal">
                                                     <fa:IconImage Icon="{Binding IconName, Mode=OneWay}" Foreground="{Binding IconColor, Mode=OneWay}" Width="14" Height="14" Margin="0,0,6,0"/>
@@ -320,7 +294,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
 
-                            <!-- Что показать, если список пуст -->
+                            <!-- Заглушка, если событий нет -->
                             <ItemsControl.Style>
                                 <Style TargetType="ItemsControl">
                                     <Style.Triggers>
@@ -330,7 +304,7 @@
                                                     <ControlTemplate>
                                                         <StackPanel HorizontalAlignment="Center" Margin="0,30,0,0">
                                                             <fa:IconImage Icon="CheckDouble" Foreground="#CBD5E1" Width="32" Height="32" HorizontalAlignment="Center"/>
-                                                            <TextBlock Text="На ближайшие 3 дня изменений нет" Foreground="#94A3B8" FontStyle="Italic" Margin="0,10,0,0"/>
+                                                            <TextBlock Text="Нет запланированных убытий" Foreground="#94A3B8" FontStyle="Italic" Margin="0,10,0,0"/>
                                                         </StackPanel>
                                                     </ControlTemplate>
                                                 </Setter.Value>
@@ -344,6 +318,5 @@
                 </Grid>
             </Border>
         </Grid>
-
     </Grid>
 </UserControl>
