@@ -23,20 +23,12 @@
             </StackPanel>
         </Grid>
 
-        <!-- 2. Статистика -->
-        <Grid Grid.Row="1" Margin="0,0,0,20">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="20"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <!-- 2. Умная статистика (Адаптивная сетка) -->
+        <!-- Negative margins compensate for the children's outer margins, making gaps perfect -->
+        <UniformGrid Grid.Row="1" Rows="1" Columns="{Binding GridColumnsCount}" Margin="-10,0,-10,20">
 
             <!-- Карточка 1: Всего по списку -->
-            <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="20">
+            <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
                 </Border.Effect>
@@ -56,7 +48,7 @@
             </Border>
 
             <!-- Карточка 2: В строю -->
-            <Border Grid.Column="2" Background="White" CornerRadius="12" Padding="20">
+            <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
                 </Border.Effect>
@@ -69,14 +61,14 @@
                         <fa:IconImage Icon="UserCheck" Foreground="#16A34A" Width="24" Height="24"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="В строю (Свободны)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="В строю (Боевые)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding InFormationCount}" FontSize="26" FontWeight="Bold" Foreground="#1E293B" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
             <!-- Карточка 3: Отсутствуют -->
-            <Border Grid.Column="4" Background="White" CornerRadius="12" Padding="20">
+            <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
                 </Border.Effect>
@@ -96,7 +88,7 @@
             </Border>
 
             <!-- Карточка 4: В наряде -->
-            <Border Grid.Column="6" Background="White" CornerRadius="12" Padding="20">
+            <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
                 </Border.Effect>
@@ -114,8 +106,30 @@
                     </StackPanel>
                 </Grid>
             </Border>
-        </Grid>
 
+            <!-- Карточка 5: КМБ / ВМП (Скрываемая) -->
+            <Border Background="White" CornerRadius="12" Padding="20" Margin="10" Visibility="{Binding IsVmpVisible}">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="50" Height="50" CornerRadius="25" Background="#EEF2FF">
+                        <fa:IconImage Icon="UserGraduate" Foreground="#6366F1" Width="24" Height="24"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="КМБ (ВМП)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding VmpCount}" FontSize="26" FontWeight="Bold" Foreground="#1E293B" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+        </UniformGrid>
+
+        <!-- Нижняя часть Дашборда -->
         <Grid Grid.Row="2" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*"/>
@@ -141,7 +155,6 @@
                                 <fa:IconImage Icon="Bell" Foreground="#F59E0B" Width="20" Height="20" Margin="0,0,10,0"/>
                                 <TextBlock Text="Планирование (Завтра)" FontSize="16" FontWeight="Bold" Foreground="#344E41"/>
                             </StackPanel>
-                            <!-- Кнопка разворачивания списка -->
                             <Button Content="{Binding ToggleChecklistText}" Command="{Binding ToggleChecklistCommand}" 
                                      HorizontalAlignment="Right" Background="Transparent" Foreground="#3B82F6" BorderThickness="0" Cursor="Hand"/>
                         </Grid>
@@ -157,13 +170,10 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-
                                                 <fa:IconImage Grid.Column="0" Icon="{Binding IconName, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" Width="20" Height="20" VerticalAlignment="Center"/>
-
                                                 <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding DutyName}" FontSize="14" FontWeight="SemiBold" Foreground="#1E293B"/>
                                                 </StackPanel>
-
                                                 <Border Grid.Column="2" Background="White" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding StatusText, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" FontWeight="Bold" FontSize="11"/>
                                                 </Border>
@@ -179,15 +189,12 @@
                 <!-- Блок 2: Активные наряды -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                     <ItemsControl ItemsSource="{Binding ActiveDutyCards}">
-                        <!-- Мы убрали ItemsPanelTemplate с UniformGrid. Теперь элементы будут просто идти списком друг под другом -->
-
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Background="#9CA3AF" CornerRadius="8" Padding="15" Margin="0,0,0,15" VerticalAlignment="Top">
                                     <Border.Effect>
                                         <DropShadowEffect BlurRadius="8" Color="Black" Opacity="0.1" ShadowDepth="2"/>
                                     </Border.Effect>
-
                                     <Grid Grid.IsSharedSizeScope="True">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
@@ -225,7 +232,6 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
 
-                        <!-- Заглушка, если нарядов нет -->
                         <ItemsControl.Style>
                             <Style TargetType="ItemsControl">
                                 <Style.Triggers>
@@ -294,7 +300,6 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
 
-                            <!-- Заглушка, если событий нет -->
                             <ItemsControl.Style>
                                 <Style TargetType="ItemsControl">
                                     <Style.Triggers>

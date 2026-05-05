@@ -108,7 +108,16 @@ namespace WpfApp1.ViewModels
 
         private void LoadAvailableSoldiers()
         {
-            var inFormation = _soldierRepo.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
+            // Берем тех, кто в строю, не в наряде и ИСКЛЮЧАЕМ ВМП/КМБ
+            var inFormation = _soldierRepo.GetAllSoldiers().Where(s =>
+                s.CurrentStatus == "В строю" &&
+                !s.IsOnActiveDuty &&
+                (s.UnitName == null ||
+                (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
+                 s.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) < 0 &&
+                 s.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) < 0))
+            ).ToList();
+
             var contractors = new ObservableCollection<TaskSoldierSelectionModel>();
             var conscripts = new ObservableCollection<TaskSoldierSelectionModel>();
 

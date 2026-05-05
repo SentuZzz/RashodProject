@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using WpfApp1.Helpers;
@@ -23,6 +24,7 @@ namespace WpfApp1.ViewModels
             get => _upcomingEvents;
             set { _upcomingEvents = value; OnPropertyChanged(); }
         }
+
         private string _currentTime;
         public string CurrentTime
         {
@@ -37,7 +39,7 @@ namespace WpfApp1.ViewModels
             set { _activeDutyCards = value; OnPropertyChanged(); }
         }
 
-        private ObservableCollection<DashboardDutyModel> _planningDuties; // Бывший TomorrowDuties
+        private ObservableCollection<DashboardDutyModel> _planningDuties;
         public ObservableCollection<DashboardDutyModel> PlanningDuties
         {
             get => _planningDuties;
@@ -45,7 +47,7 @@ namespace WpfApp1.ViewModels
             {
                 _planningDuties = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(VisiblePlanningDuties)); // Обновляем видимый список
+                OnPropertyChanged(nameof(VisiblePlanningDuties));
             }
         }
 
@@ -62,13 +64,10 @@ namespace WpfApp1.ViewModels
             }
         }
 
-        public string ToggleChecklistText => IsChecklistExpanded ? "Скрыть" : "Посмотреть все";
-
+        public string ToggleChecklistText => IsChecklistExpanded ? "Свернуть" : "Развернуть";
         public IEnumerable<DashboardDutyModel> VisiblePlanningDuties => IsChecklistExpanded ? PlanningDuties : PlanningDuties?.Where(d => d.Missing > 0).Take(2);
 
         public ICommand ToggleChecklistCommand { get; }
-
-
 
         private string _currentDate;
         public string CurrentDate
@@ -105,6 +104,24 @@ namespace WpfApp1.ViewModels
             set { _onDutyCount = value; OnPropertyChanged(); }
         }
 
+        // --- НОВЫЕ СВОЙСТВА ДЛЯ ВМП (КМБ) ---
+        private int _vmpCount;
+        public int VmpCount
+        {
+            get => _vmpCount;
+            set
+            {
+                _vmpCount = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsVmpVisible));
+                OnPropertyChanged(nameof(GridColumnsCount));
+            }
+        }
+
+        public Visibility IsVmpVisible => VmpCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public int GridColumnsCount => VmpCount > 0 ? 5 : 4;
+        // ------------------------------------
+
         private ObservableCollection<DashboardDutyModel> _tomorrowDuties;
         public ObservableCollection<DashboardDutyModel> TomorrowDuties
         {
@@ -115,49 +132,52 @@ namespace WpfApp1.ViewModels
         public HomeViewModel()
         {
             ToggleChecklistCommand = new ViewModelCommand(o => IsChecklistExpanded = !IsChecklistExpanded);
+
             _soldierRepository = new SoldierRepository();
             _dutyRepository = new DutyRepository();
             _statusRepository = new StatusRepository();
+
             StartClock();
             LoadStatistics();
+
             AppMessenger.DirectoriesUpdated += () => LoadStatistics();
+            AppMessenger.DutiesUpdated += () => LoadStatistics(); // Для обновления чеклиста нарядов
         }
 
         private void StartClock()
         {
-            // Обновляем время сразу при запуске
             UpdateDateTime();
-
-            // Создаем таймер, который будет тикать каждую 1 секунду
-            _timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _timer.Tick += (sender, args) => UpdateDateTime();
             _timer.Start();
         }
 
         private void UpdateDateTime()
         {
-            // Формат времени: Часы:Минуты:Секунды (например, 14:05:59)
             CurrentTime = DateTime.Now.ToString("HH:mm:ss");
-            // Формат даты: День Месяц Год, День недели (например, 03 Май 2026, воскресенье)
             CurrentDate = DateTime.Now.ToString("dd MMMM yyyy, dddd");
         }
 
         private void LoadStatistics()
         {
-            var soldiers = _soldierRepository.GetAllSoldiers();
+            var soldiers = _soldierRepository.GetAllSoldiers(); // Уже без дембелей
             TotalCount = soldiers.Count;
 
-            // ИСПРАВЛЕНИЕ 1: Теперь мы ищем людей в наряде по правильному флагу IsOnActiveDuty
+            // 1. В наряде
             OnDutyCount = soldiers.Count(s => s.IsOnActiveDuty);
 
-            // ИСПРАВЛЕНИЕ 2: В строю находятся те, кто свободен (CurrentStatus == "В строю") И прямо сейчас НЕ в наряде
-            InFormationCount = soldiers.Count(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty);
+            // 2. Отсутствуют (Госпиталь, Отпуск и т.д.)
+            AbsentCount = soldiers.Count(s => s.CurrentStatus != "В строю");
 
-            // ИСПРАВЛЕНИЕ 3: Отсутствующие — это все остальные (Отпуск, Госпиталь, СОЧ)
-            AbsentCount = TotalCount - OnDutyCount - InFormationCount;
+            // 3. ВМП (Свободны, но числятся во взводе пополнения)
+            // Ищем ключевые слова "ВМП", "пополнения" или "КМБ" в названии подразделения
+            VmpCount = soldiers.Count(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty && s.UnitName != null &&
+                                          (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                           s.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                           s.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0));
+
+            // 4. В строю (Боевые штыки: Всего - Наряд - Отсутствуют - ВМП)
+            InFormationCount = TotalCount - OnDutyCount - AbsentCount - VmpCount;
 
             TomorrowDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetTomorrowDutiesStatus());
             UpcomingEvents = new ObservableCollection<NotificationModel>(_statusRepository.GetUpcomingNotifications(3));
@@ -169,6 +189,5 @@ namespace WpfApp1.ViewModels
             ActiveDutyCards = new ObservableCollection<ActiveDutyCardModel>(_dutyRepository.GetActiveDutiesForDate(activeShiftDate));
             PlanningDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetDutiesStatusForDate(planningDate));
         }
-
     }
 }

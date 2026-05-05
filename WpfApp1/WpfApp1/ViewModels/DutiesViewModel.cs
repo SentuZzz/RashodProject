@@ -145,9 +145,28 @@ namespace WpfApp1.ViewModels
         private void LoadSoldiers()
         {
             var allSoldiers = _repository.GetAllSoldiers(SelectedDate);
+
             if (HideUnavailable)
             {
-                allSoldiers = allSoldiers.Where(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty).ToList();
+                // Показываем только тех, кто в строю, не в наряде и НЕ во Взводе молодого пополнения
+                allSoldiers = allSoldiers.Where(s =>
+                    s.CurrentStatus == "В строю" &&
+                    !s.IsOnActiveDuty &&
+                    (s.UnitName == null ||
+                    (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
+                     s.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) < 0 &&
+                     s.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) < 0))
+                ).ToList();
+            }
+            else
+            {
+                // Если галочка "Скрыть недоступных" снята, всё равно скрываем ВМП (им нельзя в наряд по уставу)
+                allSoldiers = allSoldiers.Where(s =>
+                    s.UnitName == null ||
+                    (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
+                     s.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) < 0 &&
+                     s.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) < 0)
+                ).ToList();
             }
 
             if (Soldiers == null)

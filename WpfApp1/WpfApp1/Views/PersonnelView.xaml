@@ -4,74 +4,44 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:helpers="clr-namespace:WpfApp1.Helpers"
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              mc:Ignorable="d" 
-             d:DesignHeight="550" d:DesignWidth="900">
+             d:DesignHeight="600" d:DesignWidth="1000">
+
     <Grid Margin="20">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="340"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Column="0" Grid.Row="0" Text="ЛИЧНЫЙ СОСТАВ И СТАТУСЫ" Foreground="{StaticResource secondaryBackBrush}" FontSize="24" FontWeight="Bold" Margin="0,0,0,15"/>
+        <TextBlock Grid.Column="0" Grid.Row="0" Text="Личный состав" Foreground="{StaticResource secondaryBackBrush}" FontSize="24" FontWeight="Bold" Margin="0,0,0,15"/>
 
-
-        <DataGrid Grid.Column="0" Grid.Row="1" ItemsSource="{Binding Soldiers}" SelectedItem="{Binding SelectedSoldier}"
-                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White"
-                  RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column"
-                  BorderThickness="0" Margin="0,0,20,0" SelectionChanged="DataGrid_SelectionChanged">
+        <!-- Таблица личного состава -->
+        <DataGrid Grid.Column="0" Grid.Row="1" ItemsSource="{Binding Soldiers}" SelectedItem="{Binding SelectedSoldier}" 
+                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White" 
+                  RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column" 
+                  BorderThickness="0" Margin="0,0,20,0">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="40"/>
-                <!-- Колонка "Статус занятости" -->
-                <DataGridTemplateColumn Header="Статус" Width="100" SortMemberPath="AvailabilityText">
+
+                <DataGridTemplateColumn Header="Доступность" Width="120" SortMemberPath="AvailabilityText">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,0,0">
-                                <!-- Цветной кружочек -->
                                 <Border Width="10" Height="10" CornerRadius="5" Background="{Binding AvailabilityColor, Mode=OneWay}" Margin="0,0,8,0">
                                     <Border.Effect>
                                         <DropShadowEffect BlurRadius="4" Color="{Binding AvailabilityColor, Mode=OneWay}" Opacity="0.4" ShadowDepth="0"/>
                                     </Border.Effect>
                                 </Border>
-                                <!-- Текст статуса -->
                                 <TextBlock Text="{Binding AvailabilityText, Mode=OneWay}" Foreground="{Binding AvailabilityColor, Mode=OneWay}" FontWeight="SemiBold"/>
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <!--<DataGridTemplateColumn Header="Текущий статус" Width="130" SortMemberPath="ServiceType">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="#FFF3CD"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CurrentStatus}" Value="В строю">
-                                                <Setter Property="Background" Value="#D4EDDA"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding CurrentStatus}" FontSize="11" FontWeight="SemiBold">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#856404"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding CurrentStatus}" Value="В строю">
-                                                    <Setter Property="Foreground" Value="#155724"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Border>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>-->
 
                 <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="120"/>
                 <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="220"/>
@@ -79,122 +49,206 @@
             </DataGrid.Columns>
         </DataGrid>
 
-
-        <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Background="White" CornerRadius="10" Padding="20">
+        <!-- Правая панель с вкладками -->
+        <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Background="White" CornerRadius="10" Padding="15">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
             </Border.Effect>
-            <StackPanel>
-                <TextBlock Text="Учет отсутствующих" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,20"/>
-                <TextBlock Text="Выберите военнослужащего в таблице..." Foreground="Gray" TextWrapping="Wrap"
-                           Visibility="{Binding SelectedSoldier, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}"/>
 
-                <StackPanel>
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Visible"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedSoldier}" Value="{x:Null}">
+            <TabControl Background="Transparent" BorderThickness="0">
+                <!-- Кастомный стиль для переключателя вкладок -->
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border Name="Border" Padding="15,8" Margin="0,0,5,15" CornerRadius="6" Background="#F1F5F9" Cursor="Hand">
+                                        <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#344E41"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="False">
+                                            <Setter Property="Foreground" Value="#64748B"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
+
+                <!-- ================== ВКЛАДКА 1: УПРАВЛЕНИЕ БОЙЦОМ ================== -->
+                <TabItem Header="Управление">
+                    <Grid>
+                        <!-- Сообщение-заглушка, если никто не выбран -->
+                        <TextBlock Text="Выберите бойца из списка слева для управления статусом и службой." 
+                                   Foreground="#94A3B8" FontStyle="Italic" TextWrapping="Wrap" Margin="10,20,10,0" TextAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedSoldier}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
 
-                    <TextBlock Text="Военнослужащий:" Foreground="Gray" FontSize="12" Margin="0,10,0,0"/>
-                    <TextBlock Text="{Binding SelectedSoldier.FullName}" FontSize="16" FontWeight="SemiBold"/>
-                    <TextBlock Text="{Binding SelectedSoldier.RankName}" FontSize="14"/>
+                        <!-- Панель управления (показывается только при выборе бойца) -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,5,0">
+                            <ScrollViewer.Style>
+                                <Style TargetType="ScrollViewer">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedSoldier}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ScrollViewer.Style>
 
-                    <Border Background="#F5F5F5" CornerRadius="8" Padding="15" Margin="0,25,0,0">
-                        <StackPanel>
-                            <TextBlock Text="Изменение статуса" FontSize="14" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
-                            <TextBlock Text="Новый статус:" Foreground="Gray" FontSize="12"/>
-                            <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding SelectedStatus}" DisplayMemberPath="StatusName" Margin="0,5,0,15" Height="30" Padding="5"/>
+                            <StackPanel>
+                                <TextBlock Text="Выбранный боец:" Foreground="Gray" FontSize="12" Margin="0,5,0,0"/>
+                                <TextBlock Text="{Binding SelectedSoldier.FullName}" FontSize="16" FontWeight="SemiBold" Foreground="#1E293B"/>
+                                <TextBlock Text="{Binding SelectedSoldier.RankName}" FontSize="14" Foreground="#475569" Margin="0,0,0,15"/>
 
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
+                                <!-- Блок изменения статуса -->
+                                <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                                    <StackPanel>
+                                        <TextBlock Text="Изменить статус" FontSize="14" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
 
+                                        <TextBlock Text="Статус:" Foreground="Gray" FontSize="12"/>
+                                        <ComboBox ItemsSource="{Binding Statuses}" SelectedItem="{Binding SelectedStatus}" DisplayMemberPath="StatusName" Margin="0,5,0,15" Height="30"/>
 
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Начало:" Foreground="Gray" FontSize="12"/>
-                                    <DatePicker SelectedDate="{Binding StartDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0">
-                                        <DatePicker.CalendarStyle>
-                                            <Style TargetType="Calendar">
-                                                <Setter Property="CalendarDayButtonStyle">
-                                                    <Setter.Value>
-                                                        <Style TargetType="CalendarDayButton">
-                                                            <Style.Triggers>
-                                                                <Trigger Property="IsBlackedOut" Value="True">
-                                                                    <Setter Property="Background" Value="#FFDDDD"/>
-                                                                    <Setter Property="Foreground" Value="#D32F2F"/>
-                                                                    <Setter Property="ToolTip">
-                                                                        <Setter.Value>
-                                                                            <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                                <Binding />
-                                                                                <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
-                                                                            </MultiBinding>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Trigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </DatePicker.CalendarStyle>
-                                    </DatePicker>
-                                </StackPanel>
+                                        <Grid Margin="0,0,0,15">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="10"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="С какого:" Foreground="Gray" FontSize="12"/>
+                                                <DatePicker SelectedDate="{Binding StartDate}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="По какое:" Foreground="Gray" FontSize="12"/>
+                                                <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate, Mode=OneWay}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
 
+                                        <TextBlock Text="Основание (Приказ):" Foreground="Gray" FontSize="12"/>
+                                        <TextBox Text="{Binding DocumentInfo, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,15" Height="30" Padding="5" VerticalContentAlignment="Center"/>
 
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Конец:" Foreground="Gray" FontSize="12"/>
-                                    <DatePicker SelectedDate="{Binding EndDate}" DisplayDateStart="{Binding StartDate, Mode=OneWay}" helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" Height="30" Margin="0,5,0,0">
-                                        <DatePicker.CalendarStyle>
-                                            <Style TargetType="Calendar">
-                                                <Setter Property="CalendarDayButtonStyle">
-                                                    <Setter.Value>
-                                                        <Style TargetType="CalendarDayButton">
-                                                            <Style.Triggers>
-                                                                <Trigger Property="IsBlackedOut" Value="True">
-                                                                    <Setter Property="Background" Value="#FFDDDD"/>
-                                                                    <Setter Property="Foreground" Value="#D32F2F"/>
-                                                                    <Setter Property="ToolTip">
-                                                                        <Setter.Value>
-                                                                            <MultiBinding Converter="{StaticResource DateTooltipConverter}">
-                                                                                <Binding />
-                                                                                <Binding Path="DataContext.BusyDatesInfo" RelativeSource="{RelativeSource AncestorType=Calendar}"/>
-                                                                            </MultiBinding>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Trigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Setter.Value>
-                                                </Setter>
-                                            </Style>
-                                        </DatePicker.CalendarStyle>
-                                    </DatePicker>
-                                </StackPanel>
-                            </Grid>
+                                        <Button Content="Сохранить статус" Command="{Binding ChangeStatusCommand}" Height="35" Background="#344E41" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
+                                            <Button.Resources>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="5"/>
+                                                </Style>
+                                            </Button.Resources>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
 
-                            <TextBlock Text="Основание (приказ, рапорт):" Foreground="Gray" FontSize="12"/>
-                            <TextBox Text="{Binding DocumentInfo, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,20" Height="30" Padding="5" VerticalContentAlignment="Center"/>
+                                <!-- Блок Увольнения (Дембель) -->
+                                <Border Background="#FEF2F2" CornerRadius="8" Padding="15" BorderBrush="#FECACA" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="Исключение из списков" FontSize="14" FontWeight="Bold" Foreground="#DC2626" Margin="0,0,0,10"/>
+                                        <TextBlock Text="Перевод в запас или отбытие в другое расположение. Боец пропадет из общих списков, но останется в архиве." 
+                                                   Foreground="#991B1B" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                                        <Button Content="Уволить в запас" Command="{Binding DismissSoldierCommand}" Height="35" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
+                                            <Button.Resources>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="5"/>
+                                                </Style>
+                                            </Button.Resources>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
 
-                            <Button Content="Сохранить" Command="{Binding ChangeStatusCommand}" Height="35" Background="#344E41" Foreground="White" BorderThickness="0">
+                <!-- ================== ВКЛАДКА 2: ЗАЧИСЛЕНИЕ В ЧАСТЬ ================== -->
+                <TabItem Header="Зачисление в роту">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,5,0">
+                        <StackPanel Margin="0,5,0,0">
+                            <TextBlock Text="ОБЩИЕ ПАРАМЕТРЫ" FontWeight="Bold" FontSize="13" Foreground="#344E41" Margin="0,0,0,10"/>
+
+                            <TextBlock Text="Звание:" Foreground="Gray" FontSize="12"/>
+                            <ComboBox ItemsSource="{Binding Ranks}" SelectedItem="{Binding SelectedRank}" DisplayMemberPath="Name" Margin="0,5,0,10" Height="30"/>
+
+                            <TextBlock Text="Должность:" Foreground="Gray" FontSize="12"/>
+                            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding SelectedPosition}" DisplayMemberPath="Name" Margin="0,5,0,10" Height="30"/>
+
+                            <TextBlock Text="Подразделение (Взвод / ВМП):" Foreground="Gray" FontSize="12"/>
+                            <ComboBox ItemsSource="{Binding Units}" SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Name" Margin="0,5,0,10" Height="30"/>
+
+                            <TextBlock Text="Тип службы:" Foreground="Gray" FontSize="12"/>
+                            <ComboBox ItemsSource="{Binding ServiceTypes}" SelectedItem="{Binding SelectedServiceType}" Margin="0,5,0,15" Height="30"/>
+
+                            <!-- Переключатель режима "Списком" -->
+                            <Border Background="#E0E7FF" CornerRadius="6" Padding="10" Margin="0,10,0,15">
+                                <CheckBox IsChecked="{Binding IsMassAddMode}" Content="Зачисление списком (для ВМП)" FontWeight="Bold" Foreground="#4338CA" Cursor="Hand"/>
+                            </Border>
+
+                            <!-- ФОРМА: ОДИНОЧНОЕ ДОБАВЛЕНИЕ -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMassAddMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <TextBlock Text="Фамилия:" Foreground="Gray" FontSize="12"/>
+                                <TextBox Text="{Binding NewLastName, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,5,0,10" Padding="5,0" VerticalContentAlignment="Center"/>
+
+                                <TextBlock Text="Имя:" Foreground="Gray" FontSize="12"/>
+                                <TextBox Text="{Binding NewFirstName, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,5,0,10" Padding="5,0" VerticalContentAlignment="Center"/>
+
+                                <TextBlock Text="Отчество:" Foreground="Gray" FontSize="12"/>
+                                <TextBox Text="{Binding NewPatronymic, UpdateSourceTrigger=PropertyChanged}" Height="30" Margin="0,5,0,15" Padding="5,0" VerticalContentAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- ФОРМА: МАССОВОЕ ДОБАВЛЕНИЕ -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMassAddMode}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <TextBlock Text="Список ФИО (вставьте из Excel или Word):" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding MassNamesText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Height="140" Padding="5" Margin="0,0,0,15" VerticalScrollBarVisibility="Auto" ToolTip="Каждый боец с новой строки. Например: Иванов Иван Иванович"/>
+                            </StackPanel>
+
+                            <Button Content="Зачислить в списки" Command="{Binding AddSoldierCommand}" Background="#344E41" Foreground="White" FontWeight="Bold" Height="40" Margin="0,5,0,10" Cursor="Hand">
                                 <Button.Resources>
                                     <Style TargetType="Border">
-                                        <Setter Property="CornerRadius" Value="5"/>
+                                        <Setter Property="CornerRadius" Value="6"/>
                                     </Style>
                                 </Button.Resources>
                             </Button>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
         </Border>
     </Grid>
 </UserControl>
