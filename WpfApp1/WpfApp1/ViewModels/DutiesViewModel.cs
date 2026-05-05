@@ -230,6 +230,7 @@ namespace WpfApp1.ViewModels
 
                 UpdateDailyStatus();
                 RefreshView();
+                AppMessenger.BroadcastDutiesUpdated();
             }
             catch (Exception ex)
             {

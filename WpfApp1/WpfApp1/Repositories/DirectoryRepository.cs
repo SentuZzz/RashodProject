@@ -10,6 +10,15 @@ namespace WpfApp1.Repositories
     {
         private readonly string _connectionString = "Data Source=rashod.db;Version=3;";
 
+        public DirectoryRepository()
+        {
+            using (var db = new SQLiteConnection(_connectionString))
+            {
+                // Пробуем безопасно добавить колонку Location (если она уже есть, try-catch просто проглотит ошибку)
+                try { db.Execute("ALTER TABLE Duties ADD COLUMN Location TEXT DEFAULT 'Общее'"); } catch { }
+            }
+        }
+
         public List<DirectoryItemModel> GetDictionary(string tableName, string idCol, string nameCol)
         {
             using (var db = new SQLiteConnection(_connectionString))
@@ -41,30 +50,7 @@ namespace WpfApp1.Repositories
                 db.Execute(sql, new { Id = idValue });
             }
         }
-        public List<DirectoryItemModel> GetDuties()
-        {
-            using (var db = new SQLiteConnection(_connectionString))
-            {
-                string sql = "SELECT DutyID AS Id, DutyName AS Name, RolePriority AS Priority FROM Duties ORDER BY RolePriority, DutyID";
-                var items = db.Query<DirectoryItemModel>(sql).ToList();
 
-                items.ForEach(i => {
-                    i.TableName = "Duties";
-                    i.IdColumnName = "DutyID";
-                    i.IsDuty = true;
-                });
-                return items;
-            }
-        }
-
-        public void AddDuty(string nameValue, int priorityValue)
-        {
-            using (var db = new SQLiteConnection(_connectionString))
-            {
-                string sql = "INSERT INTO Duties (DutyName, RolePriority) VALUES (@Name, @Priority)";
-                db.Execute(sql, new { Name = nameValue, Priority = priorityValue });
-            }
-        }
         public void UpdateItem(string tableName, string idCol, string nameCol, int idValue, string newName)
         {
             using (var db = new SQLiteConnection(_connectionString))
@@ -74,13 +60,32 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // Обновление наряда (у него обновляется еще и приоритет)
-        public void UpdateDuty(int idValue, string newName, int newPriority)
+        public List<DirectoryItemModel> GetDuties()
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                string sql = "UPDATE Duties SET DutyName = @Name, RolePriority = @Priority WHERE DutyID = @Id";
-                db.Execute(sql, new { Name = newName, Priority = newPriority, Id = idValue });
+                string sql = "SELECT DutyID AS Id, DutyName AS Name, RolePriority AS Priority, Location FROM Duties ORDER BY Location, RolePriority";
+                var items = db.Query<DirectoryItemModel>(sql).ToList();
+                items.ForEach(i => { i.TableName = "Duties"; i.IdColumnName = "DutyID"; i.IsDuty = true; });
+                return items;
+            }
+        }
+
+        public void AddDuty(string nameValue, int priorityValue, string locationValue)
+        {
+            using (var db = new SQLiteConnection(_connectionString))
+            {
+                string sql = "INSERT INTO Duties (DutyName, RolePriority, Location) VALUES (@Name, @Priority, @Location)";
+                db.Execute(sql, new { Name = nameValue, Priority = priorityValue, Location = locationValue ?? "Общее" });
+            }
+        }
+
+        public void UpdateDuty(int idValue, string newName, int newPriority, string newLocation)
+        {
+            using (var db = new SQLiteConnection(_connectionString))
+            {
+                string sql = "UPDATE Duties SET DutyName = @Name, RolePriority = @Priority, Location = @Location WHERE DutyID = @Id";
+                db.Execute(sql, new { Name = newName, Priority = newPriority, Location = newLocation ?? "Общее", Id = idValue });
             }
         }
     }
