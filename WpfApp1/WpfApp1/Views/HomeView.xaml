@@ -237,10 +237,7 @@
 
                                         <!-- Нижняя панель с датами -->
                                         <Grid Grid.Row="2">
-                                            <Border Background="#4B5563" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
-                                                <fa:IconImage Icon="InfoCircle" Foreground="White" Width="14" Height="14"/>
-                                            </Border>
-                                            <Border Background="#4D7C5F" CornerRadius="4" Padding="15,4" HorizontalAlignment="Right">
+                                                <Border Background="#4D7C5F" CornerRadius="4" Padding="15,4" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding ShiftPeriod}" Foreground="White" FontWeight="Bold" FontSize="12"/>
                                             </Border>
                                         </Grid>

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using WpfApp1.Helpers;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
 
@@ -90,6 +91,7 @@ namespace WpfApp1.ViewModels
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
 
             LoadData();
+            AppMessenger.DirectoriesUpdated += () => LoadData();
         }
 
         public void LoadData()

@@ -103,15 +103,18 @@
     </ApplicationDefinition>
     <Compile Include="Converters\DateTooltipConverter.cs" />
     <Compile Include="Converters\NullToVisibilityConverter.cs" />
+    <Compile Include="Helpers\AppMessenger.cs" />
     <Compile Include="Helpers\DataSeeder.cs" />
     <Compile Include="Helpers\DatePickerHelper.cs" />
     <Compile Include="Models\ActiveDutyCardModel.cs" />
     <Compile Include="Models\DashboardDutyModel.cs" />
+    <Compile Include="Models\DirectoryItemModel.cs" />
     <Compile Include="Models\DutyModel.cs" />
     <Compile Include="Models\NotificationModel.cs" />
     <Compile Include="Models\SoldierModel.cs" />
     <Compile Include="Models\StatusModel.cs" />
     <Compile Include="Models\TaskModel.cs" />
+    <Compile Include="Repositories\DirectoryRepository.cs" />
     <Compile Include="Repositories\DutyRepository.cs" />
     <Compile Include="Repositories\SoldierRepository.cs" />
     <Compile Include="Repositories\StatusRepository.cs" />

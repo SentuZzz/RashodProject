@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
 using System.Windows.Threading;
+using WpfApp1.Helpers;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
 
@@ -119,6 +120,7 @@ namespace WpfApp1.ViewModels
             _statusRepository = new StatusRepository();
             StartClock();
             LoadStatistics();
+            AppMessenger.DirectoriesUpdated += () => LoadStatistics();
         }
 
         private void StartClock()

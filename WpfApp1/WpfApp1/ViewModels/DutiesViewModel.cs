@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using WpfApp1.Helpers;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
 
@@ -112,6 +113,14 @@ namespace WpfApp1.ViewModels
             AssignDutyCommand = new ViewModelCommand(ExecuteAssignDuty, CanExecuteAssignDuty);
             UpdateDailyStatus();
             LoadData();
+            AppMessenger.DirectoriesUpdated += () =>
+            {
+                // Перезагружаем виды нарядов, солдат и статусы
+                UpdateDailyStatus();
+                LoadData();
+                LoadSoldiers();
+                UpdateDailyStatus();
+            };
         }
 
         private void LoadData()
