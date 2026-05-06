@@ -140,6 +140,7 @@
     <Compile Include="Helpers\BackupHelper.cs" />
     <Compile Include="Helpers\DataSeeder.cs" />
     <Compile Include="Helpers\DatePickerHelper.cs" />
+    <Compile Include="Helpers\ReportHelper.cs" />
     <Compile Include="Models\ActiveDutyCardModel.cs" />
     <Compile Include="Models\DashboardDutyModel.cs" />
     <Compile Include="Models\DirectoryItemModel.cs" />

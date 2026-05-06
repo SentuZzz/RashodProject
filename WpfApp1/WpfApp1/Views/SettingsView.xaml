@@ -124,10 +124,10 @@
                                                     </Style>
                                                 </Border.Style>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding Location, StringFormat='Место: {0} | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
-                                                    <TextBlock Text="{Binding Capacity, StringFormat='Квота: {0} чел. | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
-                                                    <TextBlock Text="{Binding Duration, StringFormat='Срок: {0} сут. | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
-                                                    <TextBlock Text="{Binding PriorityText, StringFormat='Категория: {0}'}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Location, StringFormat=' {0} | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Capacity, StringFormat=' {0} чел. | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding Duration, StringFormat=' {0} сут. | '}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding PriorityText, StringFormat=' {0}'}" FontSize="12" Foreground="#4338CA" FontWeight="Bold"/>
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
