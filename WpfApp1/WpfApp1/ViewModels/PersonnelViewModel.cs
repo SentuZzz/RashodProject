@@ -1,54 +1,42 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using WpfApp1.Helpers;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
+using WpfApp1.Helpers;
 
 namespace WpfApp1.ViewModels
 {
     public class PersonnelViewModel : ViewModelBase
     {
-        private readonly SoldierRepository _repository;
-        private readonly StatusRepository _statusRepository;
-        private readonly DutyRepository _dutyRepository;
-        private readonly DirectoryRepository _directoryRepository;
+        private readonly SoldierRepository _soldierRepo;
+        private readonly DirectoryRepository _dirRepo;
 
-        // --- СУЩЕСТВУЮЩИЕ СВОЙСТВА ДЛЯ СТАТУСОВ (ОТПУСК, ГОСПИТАЛ) ---
-        private ObservableCollection<DateTime> _busyDates = new ObservableCollection<DateTime>();
-        public ObservableCollection<DateTime> BusyDates { get => _busyDates; set { _busyDates = value; OnPropertyChanged(); } }
+        // Коллекции
+        private ObservableCollection<SoldierModel> _allSoldiers; // Оригинальный список (для поиска)
+        private ObservableCollection<SoldierModel> _soldiers;
+        public ObservableCollection<SoldierModel> Soldiers
+        {
+            get => _soldiers;
+            set { _soldiers = value; OnPropertyChanged(); }
+        }
 
-        private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
-        public Dictionary<DateTime, string> BusyDatesInfo { get => _busyDatesInfo; set { _busyDatesInfo = value; OnPropertyChanged(); } }
-
-        public ObservableCollection<SoldierModel> Soldiers { get; set; }
-        public ObservableCollection<StatusModel> Statuses { get; set; }
-
-        private SoldierModel _selectedSoldier;
-        public SoldierModel SelectedSoldier { get => _selectedSoldier; set { _selectedSoldier = value; OnPropertyChanged(); UpdateBusyDates(); } }
-
-        private StatusModel _selectedStatus;
-        public StatusModel SelectedStatus { get => _selectedStatus; set { _selectedStatus = value; OnPropertyChanged(); } }
-
-        private DateTime _startDate = DateTime.Today;
-        public DateTime StartDate { get => _startDate; set { _startDate = value; OnPropertyChanged(); } }
-
-        private DateTime _endDate = DateTime.Today.AddDays(1);
-        public DateTime EndDate { get => _endDate; set { _endDate = value; OnPropertyChanged(); } }
-
-        private string _documentInfo;
-        public string DocumentInfo { get => _documentInfo; set { _documentInfo = value; OnPropertyChanged(); } }
-
-        public ICommand ChangeStatusCommand { get; }
-
-        // --- НОВЫЕ СВОЙСТВА ДЛЯ ДОБАВЛЕНИЯ БОЙЦОВ И УВОЛЬНЕНИЯ ---
         public ObservableCollection<DirectoryItemModel> Ranks { get; set; }
         public ObservableCollection<DirectoryItemModel> Positions { get; set; }
         public ObservableCollection<DirectoryItemModel> Units { get; set; }
         public ObservableCollection<string> ServiceTypes { get; set; }
+
+        // Поля формы
+        private string _lastName;
+        public string LastName { get => _lastName; set { _lastName = value; OnPropertyChanged(); } }
+
+        private string _firstName;
+        public string FirstName { get => _firstName; set { _firstName = value; OnPropertyChanged(); } }
+
+        private string _middleName;
+        public string MiddleName { get => _middleName; set { _middleName = value; OnPropertyChanged(); } }
 
         private DirectoryItemModel _selectedRank;
         public DirectoryItemModel SelectedRank { get => _selectedRank; set { _selectedRank = value; OnPropertyChanged(); } }
@@ -62,209 +50,190 @@ namespace WpfApp1.ViewModels
         private string _selectedServiceType;
         public string SelectedServiceType { get => _selectedServiceType; set { _selectedServiceType = value; OnPropertyChanged(); } }
 
-        private bool _isMassAddMode;
-        public bool IsMassAddMode { get => _isMassAddMode; set { _isMassAddMode = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsSingleAddMode)); } }
-        public bool IsSingleAddMode => !IsMassAddMode;
+        // --- НОВЫЙ БЛОК: ПОИСК ---
+        private string _searchQuery;
+        public string SearchQuery
+        {
+            get => _searchQuery;
+            set
+            {
+                _searchQuery = value;
+                OnPropertyChanged();
+                FilterSoldiers(); // Фильтруем при каждом изменении текста
+            }
+        }
 
-        // Поля для одиночного добавления
-        private string _newLastName;
-        public string NewLastName { get => _newLastName; set { _newLastName = value; OnPropertyChanged(); } }
+        // --- НОВЫЙ БЛОК: РЕДАКТИРОВАНИЕ ---
+        private bool _isEditing;
+        public bool IsEditing
+        {
+            get => _isEditing;
+            set
+            {
+                _isEditing = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SubmitButtonText));
+                OnPropertyChanged(nameof(CancelButtonVisibility));
+                OnPropertyChanged(nameof(FormTitle));
+            }
+        }
 
-        private string _newFirstName;
-        public string NewFirstName { get => _newFirstName; set { _newFirstName = value; OnPropertyChanged(); } }
+        private int _editingSoldierId;
 
-        private string _newPatronymic;
-        public string NewPatronymic { get => _newPatronymic; set { _newPatronymic = value; OnPropertyChanged(); } }
+        // Динамическое изменение интерфейса в зависимости от режима
+        public string SubmitButtonText => IsEditing ? "Сохранить изменения" : "Добавить военнослужащего";
+        public string FormTitle => IsEditing ? "Редактирование" : "Новый военнослужащий";
+        public Visibility CancelButtonVisibility => IsEditing ? Visibility.Visible : Visibility.Collapsed;
 
-        // Поле для массового добавления
-        private string _massNamesText;
-        public string MassNamesText { get => _massNamesText; set { _massNamesText = value; OnPropertyChanged(); } }
-
-        public ICommand AddSoldierCommand { get; }
-        public ICommand DismissSoldierCommand { get; }
-        public ICommand ToggleAddModeCommand { get; }
+        // Команды
+        public ICommand SaveSoldierCommand { get; }
+        public ICommand EditSoldierCommand { get; } // Новая команда
+        public ICommand DeleteSoldierCommand { get; }
+        public ICommand CancelEditCommand { get; } // Новая команда
 
         public PersonnelViewModel()
         {
-            _repository = new SoldierRepository();
-            _statusRepository = new StatusRepository();
-            _dutyRepository = new DutyRepository();
-            _directoryRepository = new DirectoryRepository();
+            _soldierRepo = new SoldierRepository();
+            _dirRepo = new DirectoryRepository();
 
             ServiceTypes = new ObservableCollection<string> { "По призыву", "По контракту" };
 
-            ChangeStatusCommand = new ViewModelCommand(ExecuteChangeStatus, CanExecuteChangeStatus);
-            AddSoldierCommand = new ViewModelCommand(ExecuteAddSoldier);
-            DismissSoldierCommand = new ViewModelCommand(ExecuteDismissSoldier);
-            ToggleAddModeCommand = new ViewModelCommand(o => IsMassAddMode = !IsMassAddMode);
+            SaveSoldierCommand = new ViewModelCommand(ExecuteSaveSoldier, CanExecuteSaveSoldier);
+            EditSoldierCommand = new ViewModelCommand(ExecuteEditSoldier);
+            DeleteSoldierCommand = new ViewModelCommand(ExecuteDeleteSoldier);
+            CancelEditCommand = new ViewModelCommand(o => ResetForm());
 
-            LoadDirectories();
             LoadData();
-
-            // Если в настройках изменили звания/должности - обновляем выпадающие списки здесь
-            AppMessenger.DirectoriesUpdated += () => LoadDirectories();
-        }
-
-        private void LoadDirectories()
-        {
-            Statuses = new ObservableCollection<StatusModel>(_statusRepository.GetAllStatuses());
-            Ranks = new ObservableCollection<DirectoryItemModel>(_directoryRepository.GetDictionary("Ranks", "RankID", "RankName"));
-            Positions = new ObservableCollection<DirectoryItemModel>(_directoryRepository.GetDictionary("Positions", "PositionID", "PositionName"));
-            Units = new ObservableCollection<DirectoryItemModel>(_directoryRepository.GetDictionary("Units", "UnitID", "UnitName"));
-
-            OnPropertyChanged(nameof(Statuses));
-            OnPropertyChanged(nameof(Ranks));
-            OnPropertyChanged(nameof(Positions));
-            OnPropertyChanged(nameof(Units));
-        }
-
-        private void ExecuteAddSoldier(object obj)
-        {
-            if (SelectedRank == null || SelectedPosition == null || SelectedUnit == null || string.IsNullOrEmpty(SelectedServiceType))
-            {
-                MessageBox.Show("Пожалуйста, выберите Звание, Должность, Подразделение и Тип службы!", "Ошибка заполнения", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            try
-            {
-                if (IsSingleAddMode)
-                {
-                    if (string.IsNullOrWhiteSpace(NewLastName))
-                    {
-                        MessageBox.Show("Введите хотя бы фамилию бойца!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-
-                    var s = new SoldierModel
-                    {
-                        LastName = NewLastName,
-                        FirstName = NewFirstName,
-                        Patronymic = NewPatronymic,
-                        RankID = SelectedRank.Id,
-                        PositionID = SelectedPosition.Id,
-                        UnitID = SelectedUnit.Id,
-                        ServiceType = SelectedServiceType
-                    };
-                    _repository.AddSoldier(s);
-                    MessageBox.Show($"Боец {NewLastName} успешно добавлен в роту!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    if (string.IsNullOrWhiteSpace(MassNamesText))
-                    {
-                        MessageBox.Show("Вставьте список ФИО в текстовое поле!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-
-                    // Разбиваем текст на строки
-                    var lines = MassNamesText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                    var newSoldiers = new List<SoldierModel>();
-
-                    foreach (var line in lines)
-                    {
-                        // Разбиваем строку на слова (по пробелу или табуляции, если скопировали из Excel)
-                        var parts = line.Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length == 0) continue;
-
-                        newSoldiers.Add(new SoldierModel
-                        {
-                            LastName = parts[0],
-                            FirstName = parts.Length > 1 ? parts[1] : "",
-                            Patronymic = parts.Length > 2 ? parts[2] : "",
-                            RankID = SelectedRank.Id,
-                            PositionID = SelectedPosition.Id,
-                            UnitID = SelectedUnit.Id,
-                            ServiceType = SelectedServiceType
-                        });
-                    }
-
-                    _repository.AddSoldiersMass(newSoldiers);
-                    MessageBox.Show($"Успешно зачислено {newSoldiers.Count} чел.!", "Массовое добавление", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-
-                // Очищаем форму и обновляем списки
-                NewLastName = string.Empty; NewFirstName = string.Empty; NewPatronymic = string.Empty; MassNamesText = string.Empty;
-                LoadData();
-                AppMessenger.BroadcastDirectoriesUpdated(); // Даем сигнал Дашборду обновить счетчик "Всего по списку"
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при добавлении: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void ExecuteDismissSoldier(object obj)
-        {
-            if (SelectedSoldier == null) return;
-
-            if (MessageBox.Show($"Вы уверены, что хотите уволить в запас (перевести в другой округ) бойца: {SelectedSoldier.FullName}?\n\nОн навсегда исчезнет из списков личного состава, но его история нарядов сохранится в архиве.",
-                "Увольнение из рядов ВС", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-            {
-                _repository.DismissSoldier(SelectedSoldier.SoldierID);
-                RefreshView();
-                AppMessenger.BroadcastDirectoriesUpdated(); // Обновляем статистику на Главной
-                MessageBox.Show("Боец исключен из списков части.", "Дембель", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-        }
-
-        // --- СТАРЫЕ МЕТОДЫ (ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ) ---
-
-        private void UpdateBusyDates()
-        {
-            if (SelectedSoldier == null)
-            {
-                BusyDatesInfo = new Dictionary<DateTime, string>();
-                BusyDates = new ObservableCollection<DateTime>();
-                return;
-            }
-            BusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
-            BusyDates = new ObservableCollection<DateTime>(BusyDatesInfo.Keys);
-        }
-
-        private bool CanExecuteChangeStatus(object obj)
-        {
-            return SelectedSoldier != null && SelectedStatus != null && StartDate.Date <= EndDate.Date;
-        }
-
-        private void ExecuteChangeStatus(object obj)
-        {
-            try
-            {
-                for (DateTime d = StartDate.Date; d <= EndDate.Date; d = d.AddDays(1))
-                {
-                    if (BusyDatesInfo.ContainsKey(d))
-                    {
-                        MessageBox.Show($"На {d.ToShortDateString()} у бойца уже есть статус: {BusyDatesInfo[d]}", "Конфликт", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-                }
-
-                _statusRepository.AddStatusLog(SelectedSoldier.SoldierID, SelectedStatus.StatusID, StartDate, EndDate, DocumentInfo);
-                MessageBox.Show($"Статус успешно изменен!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                RefreshView();
-                AppMessenger.BroadcastDirectoriesUpdated(); // Чтобы на Дашборде обновилось количество "В строю / Отсутствуют"
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void RefreshView()
-        {
-            int? currentSoldierId = SelectedSoldier?.SoldierID;
-            SelectedStatus = null; StartDate = DateTime.Today; EndDate = DateTime.Today.AddDays(1); DocumentInfo = string.Empty;
-            LoadData();
-            if (currentSoldierId.HasValue) SelectedSoldier = Soldiers.FirstOrDefault(s => s.SoldierID == currentSoldierId.Value);
-            UpdateBusyDates();
+            AppMessenger.DirectoriesUpdated += LoadData;
         }
 
         private void LoadData()
         {
-            var data = _repository.GetAllSoldiers();
-            if (Soldiers == null) Soldiers = new ObservableCollection<SoldierModel>(data);
-            else { Soldiers.Clear(); foreach (var soldier in data) Soldiers.Add(soldier); }
+            Ranks = new ObservableCollection<DirectoryItemModel>(_dirRepo.GetDictionary("Ranks", "RankID", "RankName"));
+            Positions = new ObservableCollection<DirectoryItemModel>(_dirRepo.GetDictionary("Positions", "PositionID", "PositionName"));
+            Units = new ObservableCollection<DirectoryItemModel>(_dirRepo.GetDictionary("Units", "UnitID", "UnitName"));
+
+            // Добавляем пустую строку для "Не распределен"
+            Units.Insert(0, new DirectoryItemModel { Id = 0, Name = "--- Не распределен ---" });
+
+            OnPropertyChanged(nameof(Ranks));
+            OnPropertyChanged(nameof(Positions));
+            OnPropertyChanged(nameof(Units));
+
+            if (!IsEditing) ResetForm();
+
+            LoadSoldiers();
+        }
+
+        private void LoadSoldiers()
+        {
+            _allSoldiers = new ObservableCollection<SoldierModel>(_soldierRepo.GetAllSoldiers());
+            FilterSoldiers(); // Запускаем фильтрацию (или выводим всех, если поиск пуст)
+        }
+
+        // Логика фильтрации списка
+        private void FilterSoldiers()
+        {
+            if (_allSoldiers == null) return;
+
+            if (string.IsNullOrWhiteSpace(SearchQuery))
+            {
+                Soldiers = new ObservableCollection<SoldierModel>(_allSoldiers);
+            }
+            else
+            {
+                var query = SearchQuery.ToLower();
+                var filtered = _allSoldiers.Where(s =>
+                    (s.LastName != null && s.LastName.ToLower().Contains(query)) ||
+                    (s.FirstName != null && s.FirstName.ToLower().Contains(query)) ||
+                    (s.RankName != null && s.RankName.ToLower().Contains(query)) ||
+                    (s.PositionName != null && s.PositionName.ToLower().Contains(query))
+                ).ToList();
+
+                Soldiers = new ObservableCollection<SoldierModel>(filtered);
+            }
+        }
+
+        private bool CanExecuteSaveSoldier(object obj)
+        {
+            return !string.IsNullOrWhiteSpace(LastName) && SelectedRank != null && SelectedPosition != null && SelectedServiceType != null;
+        }
+
+        private void ExecuteSaveSoldier(object obj)
+        {
+            var soldier = new SoldierModel
+            {
+                SoldierID = _editingSoldierId,
+                LastName = LastName?.Trim(),
+                FirstName = FirstName?.Trim(),
+                MiddleName = MiddleName?.Trim(),
+                RankID = SelectedRank.Id,
+                PositionID = SelectedPosition.Id,
+                UnitID = SelectedUnit != null && SelectedUnit.Id > 0 ? SelectedUnit.Id : (int?)null,
+                ServiceType = SelectedServiceType
+            };
+
+            if (IsEditing)
+            {
+                _soldierRepo.UpdateSoldier(soldier);
+            }
+            else
+            {
+                _soldierRepo.AddSoldier(soldier);
+            }
+
+            ResetForm();
+            LoadSoldiers();
+        }
+
+        // Заполнение формы данными выбранного бойца
+        private void ExecuteEditSoldier(object obj)
+        {
+            if (obj is SoldierModel soldier)
+            {
+                IsEditing = true;
+                _editingSoldierId = soldier.SoldierID;
+
+                LastName = soldier.LastName;
+                FirstName = soldier.FirstName;
+                MiddleName = soldier.MiddleName;
+
+                SelectedRank = Ranks.FirstOrDefault(r => r.Id == soldier.RankID) ?? Ranks.First();
+                SelectedPosition = Positions.FirstOrDefault(p => p.Id == soldier.PositionID) ?? Positions.First();
+
+                if (soldier.UnitID.HasValue)
+                    SelectedUnit = Units.FirstOrDefault(u => u.Id == soldier.UnitID.Value) ?? Units.First();
+                else
+                    SelectedUnit = Units.First(); // "Не распределен"
+
+                SelectedServiceType = ServiceTypes.Contains(soldier.ServiceType) ? soldier.ServiceType : ServiceTypes.First();
+            }
+        }
+
+        private void ExecuteDeleteSoldier(object obj)
+        {
+            if (obj is int soldierId)
+            {
+                if (MessageBox.Show("Вы уверены, что хотите уволить этого военнослужащего в запас?\n\nЕго данные останутся в Архиве.", "Увольнение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    _soldierRepo.DismissSoldier(soldierId);
+                    if (IsEditing && _editingSoldierId == soldierId) ResetForm();
+                    LoadSoldiers();
+                }
+            }
+        }
+
+        private void ResetForm()
+        {
+            IsEditing = false;
+            _editingSoldierId = 0;
+            LastName = string.Empty;
+            FirstName = string.Empty;
+            MiddleName = string.Empty;
+            SelectedRank = Ranks?.FirstOrDefault();
+            SelectedPosition = Positions?.FirstOrDefault();
+            SelectedUnit = Units?.FirstOrDefault();
+            SelectedServiceType = ServiceTypes?.FirstOrDefault();
         }
     }
 }

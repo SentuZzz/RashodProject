@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Data.SQLite;
+using System.Linq;
 using Dapper;
 using WpfApp1.Models;
 
@@ -11,117 +11,119 @@ namespace WpfApp1.Repositories
     {
         private readonly string _connectionString = "Data Source=rashod.db;Version=3;Foreign Keys=True;";
 
+        // НОВЫЙ КОНСТРУКТОР: Автоматически обновляет структуру базы данных
         public SoldierRepository()
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed BOOLEAN DEFAULT 0"); } catch { }
+                // 1. Создаем таблицу статусов, если её еще нет в базе
+                string createStatusesTable = @"
+                    CREATE TABLE IF NOT EXISTS SoldierStatuses (
+                        StatusID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        SoldierID INTEGER NOT NULL,
+                        StatusType TEXT NOT NULL,
+                        StartDate DATETIME NOT NULL,
+                        EndDate DATETIME NOT NULL,
+                        FOREIGN KEY(SoldierID) REFERENCES Soldiers(SoldierID) ON DELETE CASCADE
+                    )";
+                connection.Execute(createStatusesTable);
+
+                // 2. Безопасно добавляем новые колонки в таблицу Soldiers (для Отчества и Увольнения)
+                // Используем try-catch, потому что если колонки уже есть, SQLite выдаст ошибку, которую мы просто проигнорируем
+                try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN MiddleName TEXT"); } catch { }
+                try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed INTEGER DEFAULT 0"); } catch { }
             }
         }
 
-        // Поддержка отображения дембелей в архиве нарядов
-        public List<SoldierModel> GetAllSoldiers(DateTime? targetDate = null, bool includeDismissed = false)
+        public List<SoldierModel> GetAllSoldiers(DateTime? dutyDate = null, bool includeDismissed = false)
         {
-            var soldiers = new List<SoldierModel>();
-            DateTime queryDate = targetDate ?? (DateTime.Now.Hour < 16 ? DateTime.Now.Date.AddDays(-1) : DateTime.Now.Date);
-
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 string sql = @"
-            SELECT s.*, r.RankName, p.PositionName, u.UnitName,
-                   (SELECT st.StatusName
-                     FROM StatusLog sl
-                    JOIN Statuses st ON sl.StatusID = st.StatusID
-                    WHERE sl.SoldierID = s.SoldierID
-                       AND date(@TargetDate) BETWEEN date(sl.StartDate) AND date(sl.EndDate)
-                    ORDER BY sl.StartDate DESC LIMIT 1) as CurrentStatus,
-                   (SELECT COUNT(*)
-                     FROM DutyHistory dh
-                     WHERE dh.SoldierID = s.SoldierID
-                       AND date(dh.DutyDate) = date(@TargetDate)) as ActiveDutyCount
-            FROM Soldiers s
-            LEFT JOIN Ranks r ON s.RankID = r.RankID
-            LEFT JOIN Positions p ON s.PositionID = p.PositionID
-            LEFT JOIN Units u ON s.UnitID = u.UnitID
-            WHERE (@IncludeDismissed = 1 OR s.IsDismissed = 0)";
+                    SELECT s.*, r.RankName, p.PositionName, u.UnitName
+                    FROM Soldiers s
+                    LEFT JOIN Ranks r ON s.RankID = r.RankID
+                    LEFT JOIN Positions p ON s.PositionID = p.PositionID
+                    LEFT JOIN Units u ON s.UnitID = u.UnitID
+                    WHERE 1=1 ";
 
-                var records = connection.Query(sql, new
+                if (!includeDismissed)
                 {
-                    TargetDate = queryDate.ToString("yyyy-MM-dd"),
-                    IncludeDismissed = includeDismissed ? 1 : 0
-                });
-
-                foreach (var row in records)
-                {
-                    soldiers.Add(new SoldierModel
-                    {
-                        SoldierID = (int)row.SoldierID,
-                        FirstName = row.FirstName,
-                        LastName = row.LastName,
-                        Patronymic = row.Patronymic,
-                        RankID = (int)row.RankID,
-                        PositionID = (int)row.PositionID,
-                        UnitID = (int)row.UnitID,
-                        RankName = row.RankName,
-                        PositionName = row.PositionName,
-                        UnitName = row.UnitName,
-                        ServiceType = row.ServiceType,
-                        CurrentStatus = row.CurrentStatus ?? "В строю",
-                        IsOnActiveDuty = (long)row.ActiveDutyCount > 0
-                    });
+                    sql += " AND s.IsDismissed = 0 ";
                 }
+
+                var soldiers = connection.Query<SoldierModel>(sql).ToList();
+
+                // Загрузка статусов (в отпуске, в госпитале и т.д.)
+                var statuses = connection.Query("SELECT * FROM SoldierStatuses").ToList();
+                foreach (var s in soldiers)
+                {
+                    var activeStatus = statuses.FirstOrDefault(st =>
+                        st.SoldierID == s.SoldierID &&
+                        DateTime.Parse(st.StartDate.ToString()) <= DateTime.Today &&
+                        DateTime.Parse(st.EndDate.ToString()) >= DateTime.Today);
+
+                    s.CurrentStatus = activeStatus != null ? (string)activeStatus.StatusType : "В строю";
+                }
+
+                // Проверка нарядов на выбранную дату
+                if (dutyDate.HasValue)
+                {
+                    string dutySql = @"
+                        SELECT ta.SoldierID 
+                        FROM TaskAssignments ta
+                        JOIN TaskHistory th ON ta.TaskHistoryID = th.TaskHistoryID
+                        JOIN Duties d ON th.CategoryID = d.DutyID
+                        WHERE date(th.CreationDate) = date(@DutyDate)";
+
+                    var busyIds = connection.Query<int>(dutySql, new { DutyDate = dutyDate.Value }).ToHashSet();
+                    foreach (var s in soldiers)
+                    {
+                        if (busyIds.Contains(s.SoldierID)) s.IsOnActiveDuty = true;
+                    }
+                }
+
+                return soldiers;
             }
-            return soldiers;
         }
 
         public void AddSoldier(SoldierModel soldier)
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                string sql = @"
-                    INSERT INTO Soldiers (LastName, FirstName, Patronymic, RankID, PositionID, UnitID, ServiceType, JoinDate) 
-                    VALUES (@LastName, @FirstName, @Patronymic, @RankID, @PositionID, @UnitID, @ServiceType, @JoinDate)";
-
-                connection.Execute(sql, new
-                {
-                    LastName = soldier.LastName?.Trim(),
-                    FirstName = soldier.FirstName?.Trim() ?? "",
-                    Patronymic = soldier.Patronymic?.Trim() ?? "",
-                    RankID = soldier.RankID,
-                    PositionID = soldier.PositionID,
-                    UnitID = soldier.UnitID,
-                    ServiceType = soldier.ServiceType,
-                    JoinDate = DateTime.Now.ToString("yyyy-MM-dd")
-                });
+                string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, MiddleName, ServiceType) 
+                               VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @MiddleName, @ServiceType)";
+                connection.Execute(sql, soldier);
             }
         }
 
-        public void AddSoldiersMass(List<SoldierModel> soldiers)
+        public void UpdateSoldier(SoldierModel soldier)
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                connection.Open();
-                using (var transaction = connection.BeginTransaction())
-                {
-                    string sql = @"
-                        INSERT INTO Soldiers (LastName, FirstName, Patronymic, RankID, PositionID, UnitID, ServiceType, JoinDate) 
-                        VALUES (@LastName, @FirstName, @Patronymic, @RankID, @PositionID, @UnitID, @ServiceType, @JoinDate)";
+                string sql = @"UPDATE Soldiers 
+                               SET RankID = @RankID, 
+                                   PositionID = @PositionID, 
+                                   UnitID = @UnitID, 
+                                   FirstName = @FirstName, 
+                                   LastName = @LastName, 
+                                   MiddleName = @MiddleName, 
+                                   ServiceType = @ServiceType 
+                               WHERE SoldierID = @SoldierID";
+                connection.Execute(sql, soldier);
+            }
+        }
 
-                    foreach (var s in soldiers)
-                    {
-                        connection.Execute(sql, new
-                        {
-                            LastName = s.LastName?.Trim(),
-                            FirstName = s.FirstName?.Trim() ?? "",
-                            Patronymic = s.Patronymic?.Trim() ?? "",
-                            RankID = s.RankID,
-                            PositionID = s.PositionID,
-                            UnitID = s.UnitID,
-                            ServiceType = s.ServiceType,
-                            JoinDate = DateTime.Now.ToString("yyyy-MM-dd")
-                        }, transaction);
-                    }
-                    transaction.Commit();
+        public void UpdateSoldierStatus(int soldierId, string statusType, DateTime startDate, DateTime endDate)
+        {
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Execute("DELETE FROM SoldierStatuses WHERE SoldierID = @Id", new { Id = soldierId });
+
+                if (statusType != "В строю")
+                {
+                    string sql = "INSERT INTO SoldierStatuses (SoldierID, StatusType, StartDate, EndDate) VALUES (@Id, @Type, @Start, @End)";
+                    connection.Execute(sql, new { Id = soldierId, Type = statusType, Start = startDate, End = endDate });
                 }
             }
         }
@@ -130,22 +132,7 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                connection.Open();
-                using (var trans = connection.BeginTransaction())
-                {
-                    // 1. Увольняем (меняем статус)
-                    connection.Execute("UPDATE Soldiers SET IsDismissed = 1 WHERE SoldierID = @Id", new { Id = soldierId }, trans);
-
-                    // 2. ИСПРАВЛЕНИЕ: Удаляем будущие наряды уволенного, чтобы не было призраков
-                    connection.Execute("DELETE FROM DutyHistory WHERE SoldierID = @Id AND date(DutyDate) > date('now')", new { Id = soldierId }, trans);
-
-                    // 3. Удаляем назначения на незавершенные задачи
-                    connection.Execute(@"DELETE FROM TaskAssignments 
-                                         WHERE SoldierID = @Id AND TaskHistoryID IN (SELECT TaskHistoryID FROM TaskHistory WHERE Status != 'Выполнено')",
-                                         new { Id = soldierId }, trans);
-
-                    trans.Commit();
-                }
+                connection.Execute("UPDATE Soldiers SET IsDismissed = 1 WHERE SoldierID = @Id", new { Id = soldierId });
             }
         }
     }
