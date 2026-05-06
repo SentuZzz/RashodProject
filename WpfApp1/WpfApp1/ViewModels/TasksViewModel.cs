@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -12,15 +13,38 @@ namespace WpfApp1.ViewModels
     public class TaskSoldierSelectionModel : ViewModelBase
     {
         public SoldierModel Soldier { get; set; }
+        public Dictionary<DateTime, string> BusyDates { get; set; } = new Dictionary<DateTime, string>();
+
         private bool _isSelected;
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
-        public bool IsGoingOnDuty { get; set; }
+
+        private bool _isGoingOnDuty;
+        public bool IsGoingOnDuty
+        {
+            get => _isGoingOnDuty;
+            set
+            {
+                _isGoingOnDuty = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(StatusIcon));
+                OnPropertyChanged(nameof(StatusColor));
+                OnPropertyChanged(nameof(TooltipText));
+            }
+        }
+
         private bool _isEnabled = true;
         public bool IsEnabled { get => _isEnabled; set { _isEnabled = value; OnPropertyChanged(); } }
 
+        private string _conflictReason = "";
+        public string ConflictReason
+        {
+            get => _conflictReason;
+            set { _conflictReason = value; OnPropertyChanged(nameof(TooltipText)); }
+        }
+
         public string StatusIcon => IsGoingOnDuty ? "ShieldHalved" : "CheckCircle";
         public string StatusColor => IsGoingOnDuty ? "#F59E0B" : "#10B981";
-        public string TooltipText => IsGoingOnDuty ? "Заступает в наряд (доступен до 15:00)" : "Свободен для задач";
+        public string TooltipText => IsGoingOnDuty ? $"Занят: {ConflictReason}" : "Свободен для задач";
     }
 
     public class TasksViewModel : ViewModelBase
@@ -33,7 +57,7 @@ namespace WpfApp1.ViewModels
         public DateTime SelectedDate
         {
             get => _selectedDate;
-            set { _selectedDate = value; OnPropertyChanged(); LoadAvailableSoldiers(); ValidateSoldiersByDeadline(); }
+            set { _selectedDate = value; OnPropertyChanged(); LoadAvailableSoldiers(); }
         }
 
         public ObservableCollection<TaskModel> TodoTasks { get; set; }
@@ -54,7 +78,7 @@ namespace WpfApp1.ViewModels
         public TaskCategoryModel SelectedCategory { get => _selectedCategory; set { _selectedCategory = value; OnPropertyChanged(); } }
 
         private DateTime _newTaskStartDate = DateTime.Today;
-        public DateTime NewTaskStartDate { get => _newTaskStartDate; set { _newTaskStartDate = value; OnPropertyChanged(); } }
+        public DateTime NewTaskStartDate { get => _newTaskStartDate; set { _newTaskStartDate = value; OnPropertyChanged(); ValidateSoldiersByDeadline(); } }
 
         private string _newTaskStartTime = "09:00";
         public string NewTaskStartTime { get => _newTaskStartTime; set { _newTaskStartTime = value; OnPropertyChanged(); } }
@@ -76,8 +100,6 @@ namespace WpfApp1.ViewModels
         public ICommand DeleteTaskCommand { get; }
         public ICommand EditTaskCommand { get; }
         public ICommand CancelEditCommand { get; }
-
-        // НОВАЯ КОМАНДА: Закрытие суток
         public ICommand EndOfDayCommand { get; }
 
         public TasksViewModel()
@@ -90,7 +112,7 @@ namespace WpfApp1.ViewModels
             DeleteTaskCommand = new ViewModelCommand(ExecuteDeleteTask);
             EditTaskCommand = new ViewModelCommand(ExecuteEditTask);
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
-            EndOfDayCommand = new ViewModelCommand(ExecuteEndOfDay); // Инициализация
+            EndOfDayCommand = new ViewModelCommand(ExecuteEndOfDay);
 
             LoadData();
             AppMessenger.DirectoriesUpdated += () => LoadData();
@@ -126,8 +148,8 @@ namespace WpfApp1.ViewModels
 
             foreach (var soldier in inFormation)
             {
-                bool isGoingOnDuty = _dutyRepo.GetBusyDatesWithInfoForSoldier(soldier.SoldierID).ContainsKey(SelectedDate.Date);
-                var model = new TaskSoldierSelectionModel { Soldier = soldier, IsGoingOnDuty = isGoingOnDuty, IsEnabled = true };
+                var busyDates = _dutyRepo.GetBusyDatesWithInfoForSoldier(soldier.SoldierID);
+                var model = new TaskSoldierSelectionModel { Soldier = soldier, BusyDates = busyDates, IsEnabled = true };
 
                 if (soldier.ServiceType == "По контракту") contractors.Add(model);
                 else conscripts.Add(model);
@@ -139,11 +161,15 @@ namespace WpfApp1.ViewModels
             if (!IsEditing) SelectedContractor = contractors.First();
 
             OnPropertyChanged(nameof(AvailableContractors)); OnPropertyChanged(nameof(AvailableConscripts));
+            ValidateSoldiersByDeadline();
         }
 
         private void ValidateSoldiersByDeadline()
         {
             if (AvailableConscripts == null || AvailableContractors == null) return;
+
+            DateTime startDate = NewTaskStartDate.Date;
+            DateTime endDate = NewTaskDeadline.HasValue ? NewTaskDeadline.Value.Date : startDate;
 
             bool isLate = false;
             string[] timeFormats = { @"h\:mm", @"hh\:mm" };
@@ -157,7 +183,42 @@ namespace WpfApp1.ViewModels
             }
 
             Action<TaskSoldierSelectionModel> validate = s => {
-                if (isLate && s.IsGoingOnDuty) { s.IsEnabled = false; s.IsSelected = false; } else s.IsEnabled = true;
+                if (s.Soldier.SoldierID == 0) return; // Пропускаем заглушку "Не назначать"
+
+                bool hasConflict = false;
+                string reason = "";
+
+                // Проверяем каждый день задачи на пересечение с занятостью бойца
+                for (DateTime d = startDate; d <= endDate; d = d.AddDays(1))
+                {
+                    if (s.BusyDates.ContainsKey(d))
+                    {
+                        // Исключение: Если конфликт - это наряд в ПОСЛЕДНИЙ день задачи, 
+                        // и задача заканчивается до 15:00, то боец успеет её выполнить.
+                        if (d == endDate && s.BusyDates[d].Contains("Наряд") && !isLate)
+                        {
+                            continue;
+                        }
+
+                        hasConflict = true;
+                        reason = s.BusyDates[d];
+                        break;
+                    }
+                }
+
+                if (hasConflict)
+                {
+                    s.IsEnabled = false;
+                    s.IsSelected = false;
+                    s.ConflictReason = reason;
+                    s.IsGoingOnDuty = true;
+                }
+                else
+                {
+                    s.IsEnabled = true;
+                    s.ConflictReason = "";
+                    s.IsGoingOnDuty = false;
+                }
             };
 
             foreach (var s in AvailableConscripts) validate(s);
@@ -268,10 +329,8 @@ namespace WpfApp1.ViewModels
             }
         }
 
-        // НОВЫЙ МЕТОД: Логика кнопки "Сдать дежурство"
         private void ExecuteEndOfDay(object obj)
         {
-            // Проверка "защиты от дурака"
             if (DateTime.Now.Hour < 20)
             {
                 MessageBox.Show("Подводить итоги еще рано! Сдача дежурства и сдвиг задач доступны только после 20:00.",
@@ -289,7 +348,7 @@ namespace WpfApp1.ViewModels
             if (confirmResult == MessageBoxResult.Yes)
             {
                 _taskRepo.ShiftTasksForNewDay();
-                LoadData(); // Обновляем доски Kanban
+                LoadData();
                 MessageBox.Show("Сутки успешно закрыты! Задачи сдвинуты по конвейеру.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }

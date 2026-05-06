@@ -9,7 +9,7 @@ namespace WpfApp1.Repositories
 {
     public class TaskRepository
     {
-        private readonly string _connectionString = "Data Source=rashod.db;Version=3;";
+        private readonly string _connectionString = "Data Source=rashod.db;Version=3;Foreign Keys=True;";
 
         public TaskRepository()
         {

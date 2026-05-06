@@ -9,7 +9,7 @@ namespace WpfApp1.Repositories
 {
     public class DutyRepository
     {
-        private readonly string _connectionString = "Data Source=rashod.db;Version=3;";
+        private readonly string _connectionString = "Data Source=rashod.db;Version=3;Foreign Keys=True;";
 
         public List<DutyModel> GetDuties()
         {
