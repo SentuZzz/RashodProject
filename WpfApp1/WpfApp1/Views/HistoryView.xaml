@@ -3,10 +3,208 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:WpfApp1.Views"
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-        <TextBlock Text="ИСТОРИЯ (В разработке)" Foreground="#344E41" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+             d:DesignHeight="600" d:DesignWidth="1000">
+
+    <Grid Margin="25">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Архив и История" FontSize="26" FontWeight="Bold" Foreground="{StaticResource secondaryBackBrush}" Margin="0,0,0,20"/>
+
+        <Border Grid.Row="1" Background="White" CornerRadius="10" Padding="15">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
+            </Border.Effect>
+
+            <TabControl Background="Transparent" BorderThickness="0">
+                <!-- Кастомный стиль для вкладок -->
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border Name="Border" Padding="15,8" Margin="0,0,5,15" CornerRadius="6" Background="#F1F5F9" Cursor="Hand">
+                                        <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="#344E41"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="False">
+                                            <Setter Property="Foreground" Value="#64748B"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
+
+                <!-- ================== ВКЛАДКА 1: ДЕМБЕЛЯ ================== -->
+                <TabItem Header="Личный состав (Запас)">
+                    <Grid Margin="0,10,0,0">
+                        <DataGrid ItemsSource="{Binding DismissedSoldiers}" 
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White" 
+                                  RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column" 
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="50"/>
+                                <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="150"/>
+                                <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="250"/>
+                                <DataGridTextColumn Header="Должность" Binding="{Binding PositionName}" Width="150"/>
+                                <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="150"/>
+
+                                <DataGridTemplateColumn Header="Статус" Width="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#FEE2E2" CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <TextBlock Text="Уволен" Foreground="#DC2626" FontSize="11" FontWeight="Bold"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Заглушка, если архив пуст -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DismissedSoldiers.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <fa:IconImage Icon="UserSlash" Foreground="#CBD5E1" Width="48" Height="48" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Архив уволенных пуст" Foreground="#94A3B8" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- ================== ВКЛАДКА 2: ИСТОРИЯ НАРЯДОВ ================== -->
+                <TabItem Header="История нарядов">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
+                            <fa:IconImage Icon="CalendarAlt" Foreground="#344E41" Width="20" Height="20" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Выберите дату для просмотра:" FontSize="14" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                            <DatePicker SelectedDate="{Binding SelectedArchiveDate}" Width="150" Height="30" FontSize="14" Cursor="Hand"/>
+                        </StackPanel>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,15,0">
+                            <ItemsControl ItemsSource="{Binding ArchiveDuties}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F1F5F9" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#E2E8F0" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0" Text="{Binding GroupName}" FontSize="16" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,15"/>
+
+                                                <ItemsControl Grid.Row="1" ItemsSource="{Binding PersonnelRoles}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,3">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="200"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Grid.Column="0" Text="{Binding RoleName}" Foreground="#64748B" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                                <Border Grid.Column="1" Width="2" Background="#CBD5E1" Margin="10,0" CornerRadius="1"/>
+                                                                <TextBlock Grid.Column="2" Text="{Binding PersonnelName}" Foreground="#0F172A" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+
+                                <ItemsControl.Style>
+                                    <Style TargetType="ItemsControl">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ArchiveDuties.Count}" Value="0">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate>
+                                                            <StackPanel HorizontalAlignment="Center" Margin="0,50,0,0">
+                                                                <fa:IconImage Icon="ShieldBlank" Foreground="#CBD5E1" Width="48" Height="48" HorizontalAlignment="Center"/>
+                                                                <TextBlock Text="На выбранную дату нарядов нет" Foreground="#94A3B8" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                                                            </StackPanel>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.Style>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </TabItem>
+
+                <!-- ================== ВКЛАДКА 3: АРХИВ ЗАДАЧ ================== -->
+                <TabItem Header="Выполненные задачи">
+                    <Grid Margin="0,10,0,0">
+                        <DataGrid ItemsSource="{Binding ArchivedTasks}" 
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White" 
+                                  RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column" 
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding TaskHistoryID}" Width="50"/>
+                                <DataGridTextColumn Header="Дата постановки" Binding="{Binding CreationDate, StringFormat=\{0:dd.MM.yyyy\}}" Width="130"/>
+                                <DataGridTextColumn Header="Категория" Binding="{Binding CategoryName}" Width="150"/>
+                                <DataGridTextColumn Header="Описание задачи" Binding="{Binding TaskName}" Width="*"/>
+
+                                <DataGridTemplateColumn Header="Статус" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#ECFDF5" CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Status}" Foreground="#10B981" FontSize="11" FontWeight="Bold"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ArchivedTasks.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <fa:IconImage Icon="ClipboardCheck" Foreground="#CBD5E1" Width="48" Height="48" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Нет выполненных задач" Foreground="#94A3B8" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+            </TabControl>
+        </Border>
     </Grid>
 </UserControl>

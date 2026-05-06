@@ -18,7 +18,7 @@ namespace WpfApp1.Repositories
                 int count = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM TaskCategories");
                 if (count == 0)
                 {
-                    connection.Execute("INSERT INTO TaskCategories (CategoryName) VALUES ('ПХД'), ('Уборка территории'), ('Разгрузка/Погрузка'), ('Ремонт'), ('Прочее')");
+                    connection.Execute("INSERT INTO TaskCategories (CategoryName) VALUES ('Уборка'), ('Ремонт'), ('Документы'), ('Погрузка'), ('Разное')");
                 }
             }
         }
@@ -39,13 +39,11 @@ namespace WpfApp1.Repositories
                 string sqlTasks = "SELECT t.*, c.CategoryName FROM TaskHistory t JOIN TaskCategories c ON t.CategoryID = c.CategoryID";
                 tasks = connection.Query<TaskModel>(sqlTasks).ToList();
 
-                // ДОБАВЛЕНО: Вытаскиваем ServiceType
                 string sqlAssignments = @"
                     SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, r.RankName, s.ServiceType
                     FROM TaskAssignments ta
                     JOIN Soldiers s ON ta.SoldierID = s.SoldierID
                     JOIN Ranks r ON s.RankID = r.RankID";
-
                 var assignments = connection.Query(sqlAssignments);
 
                 foreach (var task in tasks)
@@ -87,12 +85,12 @@ namespace WpfApp1.Repositories
                             connection.Execute(insertAssignmentSql, new { TaskId = newTaskId, SoldierId = sId, AssignedDate = DateTime.Now }, transaction);
                         }
                     }
+
                     transaction.Commit();
                 }
             }
         }
 
-        // НОВЫЙ МЕТОД: Редактирование задачи
         public void UpdateTask(TaskModel task, List<int> soldierIds)
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -107,7 +105,6 @@ namespace WpfApp1.Repositories
 
                     connection.Execute(updateTaskSql, task, transaction);
 
-                    // Перезаписываем исполнителей
                     connection.Execute("DELETE FROM TaskAssignments WHERE TaskHistoryID = @Id", new { Id = task.TaskHistoryID }, transaction);
 
                     if (soldierIds != null && soldierIds.Any())
@@ -118,6 +115,7 @@ namespace WpfApp1.Repositories
                             connection.Execute(insertAssignmentSql, new { TaskId = task.TaskHistoryID, SoldierId = sId, AssignedDate = DateTime.Now }, transaction);
                         }
                     }
+
                     transaction.Commit();
                 }
             }
@@ -136,6 +134,24 @@ namespace WpfApp1.Repositories
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 connection.Execute("DELETE FROM TaskHistory WHERE TaskHistoryID = @Id", new { Id = taskId });
+            }
+        }
+
+        // НОВЫЙ МЕТОД: Водопадный сдвиг задач в конце дня
+        public void ShiftTasksForNewDay()
+        {
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+                using (var trans = connection.BeginTransaction())
+                {
+                    // Порядок критически важен! Идем с конца конвейера к началу, чтобы статусы не перезаписали друг друга
+                    connection.Execute("UPDATE TaskHistory SET Status = 'В архиве' WHERE Status = 'Выполнено'", transaction: trans);
+                    connection.Execute("UPDATE TaskHistory SET Status = 'Выполнено' WHERE Status = 'В процессе'", transaction: trans);
+                    connection.Execute("UPDATE TaskHistory SET Status = 'В процессе' WHERE Status = 'К выполнению'", transaction: trans);
+
+                    trans.Commit();
+                }
             }
         }
     }

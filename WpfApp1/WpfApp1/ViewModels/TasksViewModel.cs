@@ -77,6 +77,9 @@ namespace WpfApp1.ViewModels
         public ICommand EditTaskCommand { get; }
         public ICommand CancelEditCommand { get; }
 
+        // НОВАЯ КОМАНДА: Закрытие суток
+        public ICommand EndOfDayCommand { get; }
+
         public TasksViewModel()
         {
             _taskRepo = new TaskRepository();
@@ -87,6 +90,7 @@ namespace WpfApp1.ViewModels
             DeleteTaskCommand = new ViewModelCommand(ExecuteDeleteTask);
             EditTaskCommand = new ViewModelCommand(ExecuteEditTask);
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
+            EndOfDayCommand = new ViewModelCommand(ExecuteEndOfDay); // Инициализация
 
             LoadData();
             AppMessenger.DirectoriesUpdated += () => LoadData();
@@ -168,7 +172,6 @@ namespace WpfApp1.ViewModels
         {
             string[] timeFormats = { @"h\:mm", @"hh\:mm" };
 
-            // ИСПРАВЛЕНИЕ: Строгий парсинг времени
             if (!TimeSpan.TryParseExact(NewTaskStartTime, timeFormats, null, out TimeSpan startTime))
             {
                 MessageBox.Show("Некорректный формат времени начала! Используйте формат ЧЧ:ММ (например, 09:00).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -262,6 +265,32 @@ namespace WpfApp1.ViewModels
                     if (IsEditing && _editingTaskId == taskId) ResetForm();
                     LoadData();
                 }
+            }
+        }
+
+        // НОВЫЙ МЕТОД: Логика кнопки "Сдать дежурство"
+        private void ExecuteEndOfDay(object obj)
+        {
+            // Проверка "защиты от дурака"
+            if (DateTime.Now.Hour < 20)
+            {
+                MessageBox.Show("Подводить итоги еще рано! Сдача дежурства и сдвиг задач доступны только после 20:00.",
+                                "Рано", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var confirmResult = MessageBox.Show(
+                "Вы уверены, что хотите подвести итоги дня?\n\n" +
+                "• Все выполненные задачи уйдут в Архив\n" +
+                "• Задачи 'В процессе' будут отмечены как Выполненные\n" +
+                "• Новые задачи перейдут в работу ('В процессе')",
+                "Сдача дежурства", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (confirmResult == MessageBoxResult.Yes)
+            {
+                _taskRepo.ShiftTasksForNewDay();
+                LoadData(); // Обновляем доски Kanban
+                MessageBox.Show("Сутки успешно закрыты! Задачи сдвинуты по конвейеру.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
     }

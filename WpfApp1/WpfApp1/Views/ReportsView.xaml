@@ -3,10 +3,105 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:WpfApp1.Views"
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-        <TextBlock Text="ДОКУМЕНТЫ (В разработке)" Foreground="#344E41" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+             d:DesignHeight="600" d:DesignWidth="1000">
+
+    <Grid Margin="25">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <TextBlock Grid.Row="0" Text="Отчеты и Выгрузка" FontSize="26" FontWeight="Bold" Foreground="{StaticResource secondaryBackBrush}" Margin="0,0,0,25"/>
+
+        <!-- Карточки отчетов -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <WrapPanel Orientation="Horizontal" ItemWidth="400">
+
+                <!-- КАРТОЧКА 1: Строевая записка -->
+                <Border Background="White" CornerRadius="12" Padding="25" Margin="0,0,25,25" VerticalAlignment="Top">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <Border Width="46" Height="46" CornerRadius="10" Background="#EEF2FF" Margin="0,0,15,0">
+                                <fa:IconImage Icon="FileExcel" Foreground="#4F46E5" Width="24" Height="24"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Строевая записка" FontSize="18" FontWeight="Bold" Foreground="#1E293B"/>
+                                <TextBlock Text="Excel-таблица" FontSize="12" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="Полный список личного состава с указанием званий, должностей, подразделений и текущего статуса (в наряде, в отпуске, в строю)." 
+                                   TextWrapping="Wrap" Foreground="#475569" FontSize="14" LineHeight="20" Margin="0,0,0,25" Height="60"/>
+
+                        <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,20">
+                            <StackPanel Orientation="Horizontal">
+                                <fa:IconImage Icon="CircleInfo" Foreground="#3B82F6" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Формируется на текущий день." Foreground="#64748B" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Command="{Binding ExportMusterRollCommand}" Height="45" Background="#4F46E5" Foreground="White" FontWeight="Bold" FontSize="15" BorderThickness="0" Cursor="Hand">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="8"/>
+                                </Style>
+                            </Button.Resources>
+                            <StackPanel Orientation="Horizontal">
+                                <fa:IconImage Icon="Download" Foreground="White" Width="16" Height="16" Margin="0,0,10,0"/>
+                                <TextBlock Text="Сформировать записку" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- КАРТОЧКА 2: Рапортичка (Наряды) -->
+                <Border Background="White" CornerRadius="12" Padding="25" Margin="0,0,25,25" VerticalAlignment="Top">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <Border Width="46" Height="46" CornerRadius="10" Background="#ECFDF5" Margin="0,0,15,0">
+                                <fa:IconImage Icon="ClipboardList" Foreground="#10B981" Width="24" Height="24"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Книга нарядов" FontSize="18" FontWeight="Bold" Foreground="#1E293B"/>
+                                <TextBlock Text="Excel-таблица" FontSize="12" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="Ведомость суточного наряда с распределением по постам и группам. Включает колонки для подписи о заступлении и примечаний." 
+                                   TextWrapping="Wrap" Foreground="#475569" FontSize="14" LineHeight="20" Margin="0,0,0,25" Height="60"/>
+
+                        <Border Background="#F8FAFC" CornerRadius="8" Padding="15" Margin="0,0,0,20">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <fa:IconImage Icon="CalendarDay" Foreground="#344E41" Width="18" Height="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Выберите дату:" Foreground="#334155" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                                <DatePicker SelectedDate="{Binding SelectedDate}" Width="130" Height="30" FontSize="14" Cursor="Hand" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Command="{Binding ExportDutyRosterCommand}" Height="45" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="15" BorderThickness="0" Cursor="Hand">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="8"/>
+                                </Style>
+                            </Button.Resources>
+                            <StackPanel Orientation="Horizontal">
+                                <fa:IconImage Icon="Download" Foreground="White" Width="16" Height="16" Margin="0,0,10,0"/>
+                                <TextBlock Text="Выгрузить наряды" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+            </WrapPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>
