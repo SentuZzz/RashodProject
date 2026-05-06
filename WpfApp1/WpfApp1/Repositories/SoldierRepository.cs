@@ -20,14 +20,14 @@ namespace WpfApp1.Repositories
             }
         }
 
-        public List<SoldierModel> GetAllSoldiers(DateTime? targetDate = null)
+        public List<SoldierModel> GetAllSoldiers(DateTime? targetDate = null, bool includeDismissed = false)
         {
             var soldiers = new List<SoldierModel>();
             DateTime queryDate = targetDate ?? (DateTime.Now.Hour < 16 ? DateTime.Now.Date.AddDays(-1) : DateTime.Now.Date);
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // Вытаскиваем только действующих бойцов (IsDismissed = 0)
+                // Запрос теперь учитывает параметр IncludeDismissed
                 string sql = @"
             SELECT s.*, r.RankName, p.PositionName, u.UnitName,
                    (SELECT st.StatusName
@@ -44,9 +44,14 @@ namespace WpfApp1.Repositories
             LEFT JOIN Ranks r ON s.RankID = r.RankID
             LEFT JOIN Positions p ON s.PositionID = p.PositionID
             LEFT JOIN Units u ON s.UnitID = u.UnitID
-            WHERE s.IsDismissed = 0";
+            WHERE (@IncludeDismissed = 1 OR s.IsDismissed = 0)";
 
-                var records = connection.Query(sql, new { TargetDate = queryDate.ToString("yyyy-MM-dd") });
+                // Передаем новый параметр в Dapper
+                var records = connection.Query(sql, new
+                {
+                    TargetDate = queryDate.ToString("yyyy-MM-dd"),
+                    IncludeDismissed = includeDismissed ? 1 : 0
+                });
 
                 foreach (var row in records)
                 {

@@ -167,8 +167,10 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteSaveTask(object obj)
         {
+            string[] timeFormats = { @"h\:mm", @"hh\:mm" };
+
             // ЗАЩИТА ВВОДА ВРЕМЕНИ
-            if (!TimeSpan.TryParse(NewTaskStartTime, out TimeSpan startTime))
+            if (!TimeSpan.TryParseExact(NewTaskStartTime, timeFormats, null, out TimeSpan startTime))
             {
                 MessageBox.Show("Некорректный формат времени начала! Используйте формат ЧЧ:ММ (например, 09:00).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -177,7 +179,7 @@ namespace WpfApp1.ViewModels
             TimeSpan? deadlineTime = null;
             if (NewTaskDeadline.HasValue)
             {
-                if (!TimeSpan.TryParse(NewTaskDeadlineTime, out TimeSpan dt))
+                if (!TimeSpan.TryParseExact(NewTaskDeadlineTime, timeFormats, null, out TimeSpan dt))
                 {
                     MessageBox.Show("Некорректный формат времени дедлайна! Используйте формат ЧЧ:ММ (например, 18:00).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;

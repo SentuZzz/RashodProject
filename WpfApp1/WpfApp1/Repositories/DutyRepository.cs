@@ -112,7 +112,7 @@ namespace WpfApp1.Repositories
                                WHERE date(DutyDate) = date(@Tomorrow)
                                GROUP BY DutyID";
                 var assignedCounts = connection.Query(sql, new { Tomorrow = tomorrow.ToString("yyyy-MM-dd") })
-                                               .ToDictionary(row => (int)row.DutyID, row => (int)row.AssignedCount);
+                                                .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
 
                 foreach (var duty in allDuties)
                 {
@@ -141,7 +141,7 @@ namespace WpfApp1.Repositories
                                WHERE date(DutyDate) = date(@TargetDate)
                                GROUP BY DutyID";
                 var assignedCounts = connection.Query(sql, new { TargetDate = targetDate.ToString("yyyy-MM-dd") })
-                                               .ToDictionary(row => (int)row.DutyID, row => (int)row.AssignedCount);
+                                               .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
 
                 foreach (var duty in allDuties)
                 {

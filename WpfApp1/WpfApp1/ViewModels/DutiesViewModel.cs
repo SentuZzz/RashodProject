@@ -144,7 +144,11 @@ namespace WpfApp1.ViewModels
 
         private void LoadSoldiers()
         {
-            var allSoldiers = _repository.GetAllSoldiers(SelectedDate);
+            // Объявляем ту самую переменную: если дата в прошлом (Архив) - подгружаем дембелей
+            bool includeDismissed = SelectedDate.Date < DateTime.Today;
+
+            // Вызываем метод с новым параметром
+            var allSoldiers = _repository.GetAllSoldiers(SelectedDate, includeDismissed);
 
             if (HideUnavailable)
             {
@@ -160,7 +164,7 @@ namespace WpfApp1.ViewModels
             }
             else
             {
-                // Если галочка "Скрыть недоступных" снята, всё равно скрываем ВМП (им нельзя в наряд по уставу)
+                // Если галочка "Скрыть недоступных" снята, всё равно скрываем ВМП (им нельзя в наряд)
                 allSoldiers = allSoldiers.Where(s =>
                     s.UnitName == null ||
                     (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -191,7 +195,16 @@ namespace WpfApp1.ViewModels
 
         private bool CanExecuteAssignDuty(object obj)
         {
-            return SelectedSoldier != null && SelectedDuty != null;
+            if (SelectedSoldier == null || SelectedDuty == null) return false;
+
+            // Проверяем, не из ВМП ли боец
+            bool isVmp = SelectedSoldier.UnitName != null &&
+                        (SelectedSoldier.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         SelectedSoldier.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                         SelectedSoldier.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            // Кнопка активна ТОЛЬКО если боец: В строю + НЕ в наряде + НЕ из ВМП
+            return SelectedSoldier.CurrentStatus == "В строю" && !SelectedSoldier.IsOnActiveDuty && !isVmp;
         }
 
         private void ExecuteAssignDuty(object obj)
