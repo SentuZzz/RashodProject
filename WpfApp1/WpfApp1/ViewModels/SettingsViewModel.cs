@@ -33,7 +33,6 @@ namespace WpfApp1.ViewModels
         private string _newDutyCapacity = "1";
         public string NewDutyCapacity { get => _newDutyCapacity; set { _newDutyCapacity = value; OnPropertyChanged(); } }
 
-        // НОВОЕ ПОЛЕ: Длительность наряда
         private string _newDutyDuration = "1";
         public string NewDutyDuration { get => _newDutyDuration; set { _newDutyDuration = value; OnPropertyChanged(); } }
 
@@ -55,6 +54,10 @@ namespace WpfApp1.ViewModels
         public ICommand EditItemCommand { get; }
         public ICommand CancelEditCommand { get; }
 
+        // НОВЫЕ КОМАНДЫ ДЛЯ БЭКАПОВ
+        public ICommand CreateBackupCommand { get; }
+        public ICommand RestoreBackupCommand { get; }
+
         public SettingsViewModel()
         {
             _repo = new DirectoryRepository();
@@ -66,6 +69,10 @@ namespace WpfApp1.ViewModels
             DeleteItemCommand = new ViewModelCommand(ExecuteDeleteItem);
             EditItemCommand = new ViewModelCommand(ExecuteEditItem);
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
+
+            // Инициализация команд бэкапа (вызывают методы из нашего нового Helper'а)
+            CreateBackupCommand = new ViewModelCommand(o => BackupHelper.CreateManualBackup());
+            RestoreBackupCommand = new ViewModelCommand(o => BackupHelper.RestoreBackup());
 
             SelectedMenu = MenuItems[0];
         }
@@ -85,7 +92,6 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteSaveItem(object obj)
         {
-            // ИСПРАВЛЕНИЕ: Проверяем на дубликаты, исключая текущий редактируемый элемент
             if (CurrentItems.Any(x => x.Name.Equals(NewItemName?.Trim(), StringComparison.OrdinalIgnoreCase) && (!IsEditing || x.Id != _editingItemId)))
             {
                 MessageBox.Show("Такая запись уже существует в справочнике!", "Ошибка дублирования", MessageBoxButton.OK, MessageBoxImage.Warning);
