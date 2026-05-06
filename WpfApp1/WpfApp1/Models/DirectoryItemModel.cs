@@ -4,17 +4,13 @@
     {
         public int Id { get; set; }
         public string Name { get; set; }
-
-        // Специфичные поля для нарядов
         public int Priority { get; set; }
         public bool IsDuty { get; set; }
         public string Location { get; set; }
-
-        // НОВОЕ ПОЛЕ: Квота (сколько человек заступает в этот наряд)
         public int Capacity { get; set; }
+        public int Duration { get; set; }
 
         public string PriorityText => Priority == 1 ? "Офицеры/Прапорщики" : (Priority == 2 ? "Сержанты" : "Рядовой состав");
-
         public string TableName { get; set; }
         public string IdColumnName { get; set; }
         public string NameColumnName { get; set; }

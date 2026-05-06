@@ -89,7 +89,6 @@ namespace WpfApp1.ViewModels
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
 
             LoadData();
-
             AppMessenger.DirectoriesUpdated += () => LoadData();
         }
 
@@ -102,13 +101,11 @@ namespace WpfApp1.ViewModels
             Categories = new ObservableCollection<TaskCategoryModel>(_taskRepo.GetCategories());
 
             OnPropertyChanged(nameof(TodoTasks)); OnPropertyChanged(nameof(InProgressTasks)); OnPropertyChanged(nameof(DoneTasks)); OnPropertyChanged(nameof(Categories));
-
             LoadAvailableSoldiers();
         }
 
         private void LoadAvailableSoldiers()
         {
-            // Берем тех, кто в строю, не в наряде и ИСКЛЮЧАЕМ ВМП/КМБ
             var inFormation = _soldierRepo.GetAllSoldiers().Where(s =>
                 s.CurrentStatus == "В строю" &&
                 !s.IsOnActiveDuty &&
@@ -145,9 +142,11 @@ namespace WpfApp1.ViewModels
             if (AvailableConscripts == null || AvailableContractors == null) return;
 
             bool isLate = false;
+            string[] timeFormats = { @"h\:mm", @"hh\:mm" };
+
             if (NewTaskDeadline.HasValue)
             {
-                if (TimeSpan.TryParse(NewTaskDeadlineTime, out TimeSpan parsedTime))
+                if (TimeSpan.TryParseExact(NewTaskDeadlineTime, timeFormats, null, out TimeSpan parsedTime))
                 {
                     isLate = parsedTime.Hours >= 15;
                 }
@@ -169,7 +168,7 @@ namespace WpfApp1.ViewModels
         {
             string[] timeFormats = { @"h\:mm", @"hh\:mm" };
 
-            // ЗАЩИТА ВВОДА ВРЕМЕНИ
+            // ИСПРАВЛЕНИЕ: Строгий парсинг времени
             if (!TimeSpan.TryParseExact(NewTaskStartTime, timeFormats, null, out TimeSpan startTime))
             {
                 MessageBox.Show("Некорректный формат времени начала! Используйте формат ЧЧ:ММ (например, 09:00).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -193,7 +192,7 @@ namespace WpfApp1.ViewModels
             var task = new TaskModel
             {
                 TaskHistoryID = _editingTaskId,
-                TaskName = NewTaskName?.Trim(), // Убираем случайные пробелы по краям
+                TaskName = NewTaskName?.Trim(),
                 CategoryID = SelectedCategory.CategoryID,
                 CreationDate = start,
                 DueDate = deadline,
@@ -245,23 +244,13 @@ namespace WpfApp1.ViewModels
 
         private void ResetForm()
         {
-            IsEditing = false;
-            NewTaskName = string.Empty;
-            SelectedCategory = null;
-            NewTaskDeadline = null;
-            NewTaskStartDate = DateTime.Today;
-            NewTaskStartTime = "09:00";
-            NewTaskDeadlineTime = "18:00";
-
+            IsEditing = false; NewTaskName = string.Empty; SelectedCategory = null; NewTaskDeadline = null;
+            NewTaskStartDate = DateTime.Today; NewTaskStartTime = "09:00"; NewTaskDeadlineTime = "18:00";
             foreach (var s in AvailableConscripts) s.IsSelected = false;
             SelectedContractor = AvailableContractors.First();
         }
 
-        public void ChangeTaskStatus(int taskId, string newStatus)
-        {
-            _taskRepo.UpdateTaskStatus(taskId, newStatus);
-            LoadData();
-        }
+        public void ChangeTaskStatus(int taskId, string newStatus) { _taskRepo.UpdateTaskStatus(taskId, newStatus); LoadData(); }
 
         private void ExecuteDeleteTask(object obj)
         {

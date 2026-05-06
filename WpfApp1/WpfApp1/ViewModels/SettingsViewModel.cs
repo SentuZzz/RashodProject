@@ -30,15 +30,19 @@ namespace WpfApp1.ViewModels
         private string _newDutyLocation = "По роте";
         public string NewDutyLocation { get => _newDutyLocation; set { _newDutyLocation = value; OnPropertyChanged(); } }
 
-        // НОВОЕ ПОЛЕ: Квота (Сколько человек)
         private string _newDutyCapacity = "1";
         public string NewDutyCapacity { get => _newDutyCapacity; set { _newDutyCapacity = value; OnPropertyChanged(); } }
+
+        // НОВОЕ ПОЛЕ: Длительность наряда
+        private string _newDutyDuration = "1";
+        public string NewDutyDuration { get => _newDutyDuration; set { _newDutyDuration = value; OnPropertyChanged(); } }
 
         private PriorityOption _selectedPriority;
         public PriorityOption SelectedPriority { get => _selectedPriority; set { _selectedPriority = value; OnPropertyChanged(); } }
 
         private bool _isEditing;
         public bool IsEditing { get => _isEditing; set { _isEditing = value; OnPropertyChanged(); OnPropertyChanged(nameof(SubmitButtonText)); OnPropertyChanged(nameof(CancelButtonVisibility)); } }
+
         private int _editingItemId;
         public string SubmitButtonText => IsEditing ? "Сохранить изменения" : "Добавить запись";
         public Visibility CancelButtonVisibility => IsEditing ? Visibility.Visible : Visibility.Collapsed;
@@ -81,18 +85,25 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteSaveItem(object obj)
         {
-            if (!IsEditing && CurrentItems.Any(x => x.Name.Equals(NewItemName?.Trim(), StringComparison.OrdinalIgnoreCase)))
+            // ИСПРАВЛЕНИЕ: Проверяем на дубликаты, исключая текущий редактируемый элемент
+            if (CurrentItems.Any(x => x.Name.Equals(NewItemName?.Trim(), StringComparison.OrdinalIgnoreCase) && (!IsEditing || x.Id != _editingItemId)))
             {
                 MessageBox.Show("Такая запись уже существует в справочнике!", "Ошибка дублирования", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             int capacity = 1;
+            int duration = 1;
             if (SelectedMenu == "Виды нарядов")
             {
                 if (!int.TryParse(NewDutyCapacity, out capacity) || capacity < 1)
                 {
-                    MessageBox.Show("Количество человек должно быть целым числом больше нуля!", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Количество человек должно быть числом от 1!", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (!int.TryParse(NewDutyDuration, out duration) || duration < 1)
+                {
+                    MessageBox.Show("Длительность должна быть числом от 1 суток!", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
             }
@@ -101,12 +112,12 @@ namespace WpfApp1.ViewModels
             {
                 if (IsEditing)
                 {
-                    if (SelectedMenu == "Виды нарядов") _repo.UpdateDuty(_editingItemId, NewItemName, SelectedPriority.Value, NewDutyLocation, capacity);
+                    if (SelectedMenu == "Виды нарядов") _repo.UpdateDuty(_editingItemId, NewItemName, SelectedPriority.Value, NewDutyLocation, capacity, duration);
                     else _repo.UpdateItem(CurrentItems.First().TableName, CurrentItems.First().IdColumnName, CurrentItems.First().NameColumnName, _editingItemId, NewItemName);
                 }
                 else
                 {
-                    if (SelectedMenu == "Виды нарядов") _repo.AddDuty(NewItemName, SelectedPriority.Value, NewDutyLocation, capacity);
+                    if (SelectedMenu == "Виды нарядов") _repo.AddDuty(NewItemName, SelectedPriority.Value, NewDutyLocation, capacity, duration);
                     else if (SelectedMenu == "Подразделения") _repo.AddItem("Units", "UnitName", NewItemName);
                     else if (SelectedMenu == "Звания") _repo.AddItem("Ranks", "RankName", NewItemName);
                     else if (SelectedMenu == "Должности") _repo.AddItem("Positions", "PositionName", NewItemName);
@@ -131,13 +142,15 @@ namespace WpfApp1.ViewModels
                     SelectedPriority = PriorityOptions.FirstOrDefault(p => p.Value == item.Priority) ?? PriorityOptions.First();
                     NewDutyLocation = item.Location;
                     NewDutyCapacity = item.Capacity.ToString();
+                    NewDutyDuration = item.Duration > 0 ? item.Duration.ToString() : "1";
                 }
             }
         }
 
         private void ResetForm()
         {
-            IsEditing = false; NewItemName = string.Empty; NewDutyLocation = "По роте"; NewDutyCapacity = "1"; SelectedPriority = PriorityOptions.First();
+            IsEditing = false; NewItemName = string.Empty; NewDutyLocation = "По роте";
+            NewDutyCapacity = "1"; NewDutyDuration = "1"; SelectedPriority = PriorityOptions.First();
         }
 
         private void ExecuteDeleteItem(object obj)
@@ -152,9 +165,9 @@ namespace WpfApp1.ViewModels
                         if (IsEditing && _editingItemId == item.Id) ResetForm();
                         LoadDictionary(); AppMessenger.BroadcastDirectoriesUpdated();
                     }
-                    catch (Exception) // Защита от падения при удалении используемых данных
+                    catch (Exception)
                     {
-                        MessageBox.Show("Невозможно удалить этот элемент, так как он уже назначен бойцам или используется в истории нарядов/задач.\n\nПожалуйста, переведите людей на другие должности или отредактируйте это название (вместо удаления).", "Удаление запрещено", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("Невозможно удалить этот элемент, так как он уже используется.", "Удаление запрещено", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }

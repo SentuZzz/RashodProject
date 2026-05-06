@@ -111,8 +111,10 @@ namespace WpfApp1.Repositories
                                FROM DutyHistory
                                WHERE date(DutyDate) = date(@Tomorrow)
                                GROUP BY DutyID";
+
+                // ИСПРАВЛЕН БАГ ВЫЛЕТА: Безопасная конвертация из SQLite Int64 в Int32
                 var assignedCounts = connection.Query(sql, new { Tomorrow = tomorrow.ToString("yyyy-MM-dd") })
-                                                .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
+                                               .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
 
                 foreach (var duty in allDuties)
                 {
@@ -120,12 +122,11 @@ namespace WpfApp1.Repositories
                     result.Add(new DashboardDutyModel
                     {
                         DutyName = duty.DutyName,
-                        Capacity = duty.Capacity, // Берем квоту напрямую из БД!
+                        Capacity = duty.Capacity,
                         Assigned = assigned
                     });
                 }
             }
-            // Сортировка: сначала те, где не хватает людей
             return result.OrderByDescending(d => d.Missing > 0).ThenBy(d => d.DutyName).ToList();
         }
 
@@ -140,6 +141,8 @@ namespace WpfApp1.Repositories
                                FROM DutyHistory
                                WHERE date(DutyDate) = date(@TargetDate)
                                GROUP BY DutyID";
+
+                // ИСПРАВЛЕН БАГ ВЫЛЕТА: Безопасная конвертация
                 var assignedCounts = connection.Query(sql, new { TargetDate = targetDate.ToString("yyyy-MM-dd") })
                                                .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
 
@@ -149,7 +152,7 @@ namespace WpfApp1.Repositories
                     result.Add(new DashboardDutyModel
                     {
                         DutyName = duty.DutyName,
-                        Capacity = duty.Capacity, // Берем квоту напрямую из БД!
+                        Capacity = duty.Capacity,
                         Assigned = assigned
                     });
                 }
@@ -162,7 +165,6 @@ namespace WpfApp1.Repositories
             var result = new List<ActiveDutyCardModel>();
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // ИСПОЛЬЗУЕМ НОВУЮ КОЛОНКУ Location ВМЕСТО DutyGroups
                 string sql = @"
             SELECT d.Location as GroupName, d.DutyName as RoleName, r.RankName, s.LastName, s.FirstName, s.Patronymic
             FROM DutyHistory dh
@@ -173,8 +175,6 @@ namespace WpfApp1.Repositories
             ORDER BY d.Location, d.RolePriority, s.RankID";
 
                 var records = connection.Query(sql, new { ShiftDate = shiftDate.ToString("yyyy-MM-dd") });
-
-                // Группируем по Location
                 var grouped = records.GroupBy(r => (string)r.GroupName);
 
                 foreach (var group in grouped)

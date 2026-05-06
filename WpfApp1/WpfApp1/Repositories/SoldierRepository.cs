@@ -13,13 +13,13 @@ namespace WpfApp1.Repositories
 
         public SoldierRepository()
         {
-            // Умное обновление БД: добавляем колонку для "Мягкого удаления" (Дембель)
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed BOOLEAN DEFAULT 0"); } catch { }
             }
         }
 
+        // Поддержка отображения дембелей в архиве нарядов
         public List<SoldierModel> GetAllSoldiers(DateTime? targetDate = null, bool includeDismissed = false)
         {
             var soldiers = new List<SoldierModel>();
@@ -27,7 +27,6 @@ namespace WpfApp1.Repositories
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // Запрос теперь учитывает параметр IncludeDismissed
                 string sql = @"
             SELECT s.*, r.RankName, p.PositionName, u.UnitName,
                    (SELECT st.StatusName
@@ -46,7 +45,6 @@ namespace WpfApp1.Repositories
             LEFT JOIN Units u ON s.UnitID = u.UnitID
             WHERE (@IncludeDismissed = 1 OR s.IsDismissed = 0)";
 
-                // Передаем новый параметр в Dapper
                 var records = connection.Query(sql, new
                 {
                     TargetDate = queryDate.ToString("yyyy-MM-dd"),
@@ -76,9 +74,6 @@ namespace WpfApp1.Repositories
             return soldiers;
         }
 
-        // --- НОВЫЕ МЕТОДЫ ---
-
-        // 1. Добавление одного бойца
         public void AddSoldier(SoldierModel soldier)
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -101,7 +96,6 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // 2. Массовое добавление списка бойцов (для ВМП)
         public void AddSoldiersMass(List<SoldierModel> soldiers)
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -132,12 +126,26 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // 3. "Мягкое" увольнение в запас (Дембель)
         public void DismissSoldier(int soldierId)
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                connection.Execute("UPDATE Soldiers SET IsDismissed = 1 WHERE SoldierID = @Id", new { Id = soldierId });
+                connection.Open();
+                using (var trans = connection.BeginTransaction())
+                {
+                    // 1. Увольняем (меняем статус)
+                    connection.Execute("UPDATE Soldiers SET IsDismissed = 1 WHERE SoldierID = @Id", new { Id = soldierId }, trans);
+
+                    // 2. ИСПРАВЛЕНИЕ: Удаляем будущие наряды уволенного, чтобы не было призраков
+                    connection.Execute("DELETE FROM DutyHistory WHERE SoldierID = @Id AND date(DutyDate) > date('now')", new { Id = soldierId }, trans);
+
+                    // 3. Удаляем назначения на незавершенные задачи
+                    connection.Execute(@"DELETE FROM TaskAssignments 
+                                         WHERE SoldierID = @Id AND TaskHistoryID IN (SELECT TaskHistoryID FROM TaskHistory WHERE Status != 'Выполнено')",
+                                         new { Id = soldierId }, trans);
+
+                    trans.Commit();
+                }
             }
         }
     }

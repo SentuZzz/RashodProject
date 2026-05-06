@@ -28,12 +28,7 @@ namespace WpfApp1.ViewModels
         public bool HideUnavailable
         {
             get => _hideUnavailable;
-            set
-            {
-                _hideUnavailable = value;
-                OnPropertyChanged();
-                LoadSoldiers();
-            }
+            set { _hideUnavailable = value; OnPropertyChanged(); LoadSoldiers(); }
         }
 
         private ObservableCollection<DateTime> _busyDates = new ObservableCollection<DateTime>();
@@ -118,41 +113,25 @@ namespace WpfApp1.ViewModels
 
             AppMessenger.DirectoriesUpdated += () =>
             {
-                _allDuties = _dutyRepository.GetDuties(); // Подгружаем свежие наряды
-                LoadData();
-                LoadSoldiers();
-                UpdateDailyStatus();
+                _allDuties = _dutyRepository.GetDuties();
+                LoadData(); LoadSoldiers(); UpdateDailyStatus();
             };
         }
 
         private void LoadData()
         {
             var data = _repository.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю").ToList();
-            if (Soldiers == null)
-            {
-                Soldiers = new ObservableCollection<SoldierModel>(data);
-            }
-            else
-            {
-                Soldiers.Clear();
-                foreach (var soldier in data)
-                {
-                    Soldiers.Add(soldier);
-                }
-            }
+            if (Soldiers == null) Soldiers = new ObservableCollection<SoldierModel>(data);
+            else { Soldiers.Clear(); foreach (var soldier in data) Soldiers.Add(soldier); }
         }
 
         private void LoadSoldiers()
         {
-            // Объявляем ту самую переменную: если дата в прошлом (Архив) - подгружаем дембелей
             bool includeDismissed = SelectedDate.Date < DateTime.Today;
-
-            // Вызываем метод с новым параметром
             var allSoldiers = _repository.GetAllSoldiers(SelectedDate, includeDismissed);
 
             if (HideUnavailable)
             {
-                // Показываем только тех, кто в строю, не в наряде и НЕ во Взводе молодого пополнения
                 allSoldiers = allSoldiers.Where(s =>
                     s.CurrentStatus == "В строю" &&
                     !s.IsOnActiveDuty &&
@@ -164,7 +143,6 @@ namespace WpfApp1.ViewModels
             }
             else
             {
-                // Если галочка "Скрыть недоступных" снята, всё равно скрываем ВМП (им нельзя в наряд)
                 allSoldiers = allSoldiers.Where(s =>
                     s.UnitName == null ||
                     (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -173,37 +151,24 @@ namespace WpfApp1.ViewModels
                 ).ToList();
             }
 
-            if (Soldiers == null)
-            {
-                Soldiers = new ObservableCollection<SoldierModel>(allSoldiers);
-            }
-            else
-            {
-                Soldiers.Clear();
-                foreach (var soldier in allSoldiers)
-                {
-                    Soldiers.Add(soldier);
-                }
-            }
+            if (Soldiers == null) Soldiers = new ObservableCollection<SoldierModel>(allSoldiers);
+            else { Soldiers.Clear(); foreach (var soldier in allSoldiers) Soldiers.Add(soldier); }
         }
 
         private void UpdateDailyStatus()
         {
-            DailyDutiesStatus = new ObservableCollection<DashboardDutyModel>(
-                _dutyRepository.GetDutiesStatusForDate(SelectedDate));
+            DailyDutiesStatus = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetDutiesStatusForDate(SelectedDate));
         }
 
         private bool CanExecuteAssignDuty(object obj)
         {
             if (SelectedSoldier == null || SelectedDuty == null) return false;
 
-            // Проверяем, не из ВМП ли боец
             bool isVmp = SelectedSoldier.UnitName != null &&
                         (SelectedSoldier.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
                          SelectedSoldier.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0 ||
                          SelectedSoldier.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0);
 
-            // Кнопка активна ТОЛЬКО если боец: В строю + НЕ в наряде + НЕ из ВМП
             return SelectedSoldier.CurrentStatus == "В строю" && !SelectedSoldier.IsOnActiveDuty && !isVmp;
         }
 
@@ -219,9 +184,8 @@ namespace WpfApp1.ViewModels
 
             try
             {
-                // Берем квоту напрямую из модели
                 int capacity = SelectedDuty.Capacity;
-                int duration = 1; // Убрали хардкод, длительность по умолчанию 1 сутки
+                int duration = SelectedDuty.Duration > 0 ? SelectedDuty.Duration : 1; // ИСПРАВЛЕНИЕ: Берем длительность из БД
 
                 var allBusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
 
@@ -258,40 +222,25 @@ namespace WpfApp1.ViewModels
                 MessageBox.Show($"Боец {SelectedSoldier.LastName} назначен в наряд {SelectedDuty.DutyName}{daysText} (с {targetDate.ToShortDateString()})!",
                                 "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                IsCustomDateVisible = false;
-                CustomAssignDate = SelectedDate;
-
-                UpdateDailyStatus();
-                RefreshView();
-
-                // Обновляем чеклисты везде
+                IsCustomDateVisible = false; CustomAssignDate = SelectedDate;
+                UpdateDailyStatus(); RefreshView();
                 AppMessenger.BroadcastDutiesUpdated();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка базы данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                UpdateBusyDates();
             }
         }
 
         private void FilterDuties()
         {
-            AvailableDuties.Clear();
-            SelectedDuty = null;
-
+            AvailableDuties.Clear(); SelectedDuty = null;
             if (_selectedSoldier == null) return;
 
-            // Сортируем: контрактники видят наряды 1 и 2 приоритета, срочники - 2 и 3.
             foreach (var duty in _allDuties)
             {
-                if (_selectedSoldier.ServiceType == "По контракту" && duty.RolePriority <= 2)
-                {
-                    AvailableDuties.Add(duty);
-                }
-                else if (_selectedSoldier.ServiceType == "По призыву" && duty.RolePriority >= 2)
-                {
-                    AvailableDuties.Add(duty);
-                }
+                if (_selectedSoldier.ServiceType == "По контракту" && duty.RolePriority <= 2) AvailableDuties.Add(duty);
+                else if (_selectedSoldier.ServiceType == "По призыву" && duty.RolePriority >= 2) AvailableDuties.Add(duty);
             }
         }
 
@@ -299,19 +248,13 @@ namespace WpfApp1.ViewModels
         {
             if (SelectedSoldier == null)
             {
-                BusyDatesInfo = new Dictionary<DateTime, string>();
-                BusyDates = new ObservableCollection<DateTime>();
+                BusyDatesInfo = new Dictionary<DateTime, string>(); BusyDates = new ObservableCollection<DateTime>();
                 return;
             }
             BusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
             BusyDates = new ObservableCollection<DateTime>(BusyDatesInfo.Keys);
         }
 
-        private void RefreshView()
-        {
-            SelectedSoldier = null;
-            SelectedDuty = null;
-            LoadData();
-        }
+        private void RefreshView() { SelectedSoldier = null; SelectedDuty = null; LoadData(); }
     }
 }
