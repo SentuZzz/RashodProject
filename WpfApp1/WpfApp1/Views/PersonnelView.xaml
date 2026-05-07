@@ -8,7 +8,6 @@
              d:DesignHeight="700" d:DesignWidth="1100">
 
     <Grid>
-
         <Border Background="White" CornerRadius="10" Margin="20" Padding="15">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
@@ -99,11 +98,8 @@
                     </DataGrid.Resources>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="110" MinWidth="100"/>
-
                         <DataGridTextColumn Header="ФИО" Binding="{Binding FullNameExpanded}" Width="*" MinWidth="220"/>
-
                         <DataGridTextColumn Header="Тип службы" Binding="{Binding ServiceType}" Width="110" MinWidth="100"/>
-
                         <DataGridTextColumn Header="Зачислен" Binding="{Binding JoinDate, StringFormat=\{0:dd.MM.yyyy\}}" Width="90" MinWidth="90"/>
                         <DataGridTextColumn Header="Должность" Binding="{Binding PositionName}" Width="150" MinWidth="130"/>
                         <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="120" MinWidth="120"/>
@@ -294,16 +290,20 @@
                             <DatePicker SelectedDate="{Binding JoinDate}" Height="35" Margin="0,0,0,15"/>
 
                             <TextBlock Text="Звание:" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{Binding Ranks}" SelectedItem="{Binding SelectedRank}" DisplayMemberPath="Name" Height="35" Margin="0,0,0,15"/>
+                            <ComboBox ItemsSource="{Binding Ranks}" SelectedItem="{Binding SelectedRank}" DisplayMemberPath="Name" Height="35" Margin="0,0,0,15"
+                                      IsEnabled="{Binding IsSingleInsertMode}" ToolTip="При добавлении списка звание жестко фиксируется (Рядовой)"/>
 
                             <TextBlock Text="Должность:" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding SelectedPosition}" DisplayMemberPath="Name" Height="35" Margin="0,0,0,15"/>
+                            <ComboBox ItemsSource="{Binding Positions}" SelectedItem="{Binding SelectedPosition}" DisplayMemberPath="Name" Height="35" Margin="0,0,0,15"
+                                      IsEnabled="{Binding IsSingleInsertMode}" ToolTip="При добавлении списка должность жестко фиксируется (Стрелок)"/>
 
                             <TextBlock Text="Подразделение:" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{Binding Units}" SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Name" Height="35" Margin="0,0,0,15"/>
+                            <ComboBox ItemsSource="{Binding Units}" SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Name" Height="35" Margin="0,0,0,15"
+                                      IsEnabled="{Binding IsSingleInsertMode}" ToolTip="При добавлении списка подразделение жестко фиксируется (назначается ВМП)"/>
 
                             <TextBlock Text="Тип службы:" Foreground="Gray" FontSize="12" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{Binding ServiceTypes}" SelectedItem="{Binding SelectedServiceType}" Height="35" Margin="0,0,0,15"/>
+                            <ComboBox ItemsSource="{Binding ServiceTypes}" SelectedItem="{Binding SelectedServiceType}" Height="35" Margin="0,0,0,15"
+                                      IsEnabled="{Binding IsSingleInsertMode}" ToolTip="При добавлении списка тип службы жестко фиксируется (По призыву)"/>
                         </StackPanel>
                     </ScrollViewer>
 

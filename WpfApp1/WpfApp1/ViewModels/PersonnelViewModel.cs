@@ -65,7 +65,6 @@ namespace WpfApp1.ViewModels
             }
         }
 
-        // --- НОВЫЙ ФЛАГ ДЛЯ ВСПЛЫВАЮЩЕГО ОКНА ---
         private bool _isFormOpen;
         public bool IsFormOpen
         {
@@ -92,10 +91,29 @@ namespace WpfApp1.ViewModels
             set
             {
                 _isBulkInsertMode = value;
-                if (value) IsEditing = false;
+                if (value)
+                {
+                    IsEditing = false;
+
+                    // ИСПРАВЛЕНИЕ: Автоматически выбираем нужные пункты для визуального отображения (они будут заблокированы)
+                    var vmpUnit = Units?.FirstOrDefault(u =>
+                        u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0);
+                    if (vmpUnit != null) SelectedUnit = vmpUnit;
+
+                    var rank = Ranks?.FirstOrDefault(r => r.Name.Equals("Рядовой", StringComparison.OrdinalIgnoreCase));
+                    if (rank != null) SelectedRank = rank;
+
+                    var pos = Positions?.FirstOrDefault(p => p.Name.Equals("Стрелок", StringComparison.OrdinalIgnoreCase));
+                    if (pos != null) SelectedPosition = pos;
+
+                    SelectedServiceType = "По призыву";
+                }
                 UpdateUIProperties();
             }
         }
+
+        public bool IsSingleInsertMode => !IsBulkInsertMode;
 
         private string _bulkInsertText;
         public string BulkInsertText { get => _bulkInsertText; set { _bulkInsertText = value; OnPropertyChanged(); } }
@@ -109,6 +127,7 @@ namespace WpfApp1.ViewModels
         {
             OnPropertyChanged(nameof(IsEditing));
             OnPropertyChanged(nameof(IsBulkInsertMode));
+            OnPropertyChanged(nameof(IsSingleInsertMode));
             OnPropertyChanged(nameof(SubmitButtonText));
             OnPropertyChanged(nameof(FormTitle));
         }
@@ -118,8 +137,6 @@ namespace WpfApp1.ViewModels
         public ICommand DeleteSoldierCommand { get; }
         public ICommand CancelEditCommand { get; }
         public ICommand ToggleBulkModeCommand { get; }
-
-        // --- НОВАЯ КОМАНДА ДЛЯ ОТКРЫТИЯ ОКНА ДОБАВЛЕНИЯ ---
         public ICommand OpenAddFormCommand { get; }
 
         public PersonnelViewModel()
@@ -129,18 +146,16 @@ namespace WpfApp1.ViewModels
 
             ServiceTypes = new ObservableCollection<string> { "По призыву", "По контракту" };
 
-            // Инициализация команд
             OpenAddFormCommand = new ViewModelCommand(o =>
             {
                 ResetForm();
-                IsFormOpen = true; // Открываем панель
+                IsFormOpen = true;
             });
 
             SaveSoldierCommand = new ViewModelCommand(ExecuteSaveSoldier, CanExecuteSaveSoldier);
             EditSoldierCommand = new ViewModelCommand(ExecuteEditSoldier);
             DeleteSoldierCommand = new ViewModelCommand(ExecuteDeleteSoldier);
 
-            // Кнопка отмена теперь просто закрывает окно
             CancelEditCommand = new ViewModelCommand(o =>
             {
                 ResetForm();
@@ -216,10 +231,22 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteSaveSoldier(object obj)
         {
+            int safeUnitId = SelectedUnit != null && SelectedUnit.Id > 0 ? SelectedUnit.Id : (Units?.FirstOrDefault(u => u.Id > 0)?.Id ?? 1);
+
             if (IsBulkInsertMode)
             {
                 var lines = BulkInsertText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 var newSoldiers = new List<SoldierModel>();
+
+                // Жестко фиксируем параметры для пополнения (независимо от того, что в интерфейсе)
+                var vmpUnit = Units?.FirstOrDefault(u =>
+                    u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0);
+                int targetBulkUnitId = vmpUnit != null ? vmpUnit.Id : safeUnitId;
+
+                int targetRankId = Ranks?.FirstOrDefault(r => r.Name.Equals("Рядовой", StringComparison.OrdinalIgnoreCase))?.Id ?? SelectedRank?.Id ?? 1;
+                int targetPosId = Positions?.FirstOrDefault(p => p.Name.Equals("Стрелок", StringComparison.OrdinalIgnoreCase))?.Id ?? SelectedPosition?.Id ?? 1;
+                string targetServiceType = "По призыву";
 
                 foreach (var line in lines)
                 {
@@ -236,17 +263,17 @@ namespace WpfApp1.ViewModels
                         FirstName = fn,
                         Patronymic = mn,
                         JoinDate = JoinDate,
-                        RankID = SelectedRank.Id,
-                        PositionID = SelectedPosition.Id,
-                        UnitID = SelectedUnit != null && SelectedUnit.Id > 0 ? SelectedUnit.Id : (int?)null,
-                        ServiceType = SelectedServiceType
+                        RankID = targetRankId,
+                        PositionID = targetPosId,
+                        UnitID = targetBulkUnitId,
+                        ServiceType = targetServiceType
                     });
                 }
 
                 if (newSoldiers.Any())
                 {
                     _soldierRepo.AddSoldiersBulk(newSoldiers);
-                    MessageBox.Show($"Успешно зачислено военнослужащих: {newSoldiers.Count}", "Пополнение", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"Успешно зачислено военнослужащих: {newSoldiers.Count}\n(Всем автоматически присвоено звание Рядовой, должность Стрелок и тип службы По призыву).", "Пополнение", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             else
@@ -260,7 +287,7 @@ namespace WpfApp1.ViewModels
                     JoinDate = JoinDate,
                     RankID = SelectedRank.Id,
                     PositionID = SelectedPosition.Id,
-                    UnitID = SelectedUnit != null && SelectedUnit.Id > 0 ? SelectedUnit.Id : (int?)null,
+                    UnitID = safeUnitId,
                     ServiceType = SelectedServiceType
                 };
 
@@ -269,7 +296,7 @@ namespace WpfApp1.ViewModels
             }
 
             ResetForm();
-            IsFormOpen = false; // Закрываем окно после сохранения
+            IsFormOpen = false;
             LoadSoldiers();
         }
 
@@ -295,7 +322,7 @@ namespace WpfApp1.ViewModels
 
                 SelectedServiceType = ServiceTypes.Contains(soldier.ServiceType) ? soldier.ServiceType : ServiceTypes.First();
 
-                IsFormOpen = true; // Открываем всплывающее окно
+                IsFormOpen = true;
             }
         }
 
@@ -331,10 +358,22 @@ namespace WpfApp1.ViewModels
             BulkInsertText = string.Empty;
             JoinDate = DateTime.Today;
 
-            SelectedRank = Ranks?.FirstOrDefault();
-            SelectedPosition = Positions?.FirstOrDefault();
-            SelectedUnit = Units?.FirstOrDefault();
-            SelectedServiceType = ServiceTypes?.FirstOrDefault();
+            if (IsBulkInsertMode)
+            {
+                SelectedUnit = Units?.FirstOrDefault(u =>
+                    u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0);
+                SelectedRank = Ranks?.FirstOrDefault(r => r.Name.Equals("Рядовой", StringComparison.OrdinalIgnoreCase));
+                SelectedPosition = Positions?.FirstOrDefault(p => p.Name.Equals("Стрелок", StringComparison.OrdinalIgnoreCase));
+                SelectedServiceType = "По призыву";
+            }
+            else
+            {
+                SelectedUnit = Units?.FirstOrDefault();
+                SelectedRank = Ranks?.FirstOrDefault();
+                SelectedPosition = Positions?.FirstOrDefault();
+                SelectedServiceType = ServiceTypes?.FirstOrDefault();
+            }
         }
 
         public void Dispose()

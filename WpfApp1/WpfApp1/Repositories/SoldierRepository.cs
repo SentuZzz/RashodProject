@@ -29,7 +29,8 @@ namespace WpfApp1.Repositories
                         )";
                     connection.Execute(createStatusesTable);
 
-                    try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN MiddleName TEXT"); } catch { }
+                    // ИСПРАВЛЕНИЕ: Пытаемся добавить колонку Patronymic (а не MiddleName)
+                    try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN Patronymic TEXT"); } catch { }
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed INTEGER DEFAULT 0"); } catch { }
                     // Пытаемся добавить JoinDate, если вдруг его не было в изначальной схеме (хотя в DataSeeder он есть)
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN JoinDate DATETIME DEFAULT CURRENT_DATE"); } catch { }
@@ -42,7 +43,6 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // ИСПРАВЛЕНИЕ: Теперь запрашиваем и дату зачисления (JoinDate)
                 string sql = @"
                     SELECT s.*, r.RankName, p.PositionName, u.UnitName
                     FROM Soldiers s
@@ -101,13 +101,13 @@ namespace WpfApp1.Repositories
             {
                 if (soldier.JoinDate == DateTime.MinValue) soldier.JoinDate = DateTime.Today;
 
-                string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, MiddleName, ServiceType, JoinDate) 
-                               VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @MiddleName, @ServiceType, @JoinDate)";
+                // ИСПРАВЛЕНИЕ: Используем Patronymic вместо MiddleName
+                string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, Patronymic, ServiceType, JoinDate) 
+                               VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @Patronymic, @ServiceType, @JoinDate)";
                 connection.Execute(sql, soldier);
             }
         }
 
-        // НОВЫЙ МЕТОД: Массовое добавление пополнения через транзакцию (очень быстро)
         public void AddSoldiersBulk(IEnumerable<SoldierModel> soldiers)
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -115,8 +115,9 @@ namespace WpfApp1.Repositories
                 connection.Open();
                 using (var transaction = connection.BeginTransaction())
                 {
-                    string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, MiddleName, ServiceType, JoinDate) 
-                                   VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @MiddleName, @ServiceType, @JoinDate)";
+                    // ИСПРАВЛЕНИЕ: Используем Patronymic вместо MiddleName
+                    string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, Patronymic, ServiceType, JoinDate) 
+                                   VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @Patronymic, @ServiceType, @JoinDate)";
 
                     foreach (var soldier in soldiers)
                     {
@@ -133,13 +134,14 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
+                // ИСПРАВЛЕНИЕ: Устанавливаем Patronymic = @Patronymic
                 string sql = @"UPDATE Soldiers 
                                SET RankID = @RankID, 
                                    PositionID = @PositionID, 
                                    UnitID = @UnitID, 
                                    FirstName = @FirstName, 
                                    LastName = @LastName, 
-                                   MiddleName = @MiddleName, 
+                                   Patronymic = @Patronymic, 
                                    ServiceType = @ServiceType 
                                WHERE SoldierID = @SoldierID";
                 connection.Execute(sql, soldier);
