@@ -10,8 +10,6 @@ namespace WpfApp1.Repositories
     public class SoldierRepository
     {
         private readonly string _connectionString = "Data Source=rashod.db;Version=3;Foreign Keys=True;";
-
-        // Статический флаг, чтобы обновлять структуру БД только один раз за запуск приложения
         private static bool _isDbInitialized = false;
 
         public SoldierRepository()
@@ -20,7 +18,6 @@ namespace WpfApp1.Repositories
             {
                 using (var connection = new SQLiteConnection(_connectionString))
                 {
-                    // 1. Создаем таблицу статусов, если её еще нет в базе
                     string createStatusesTable = @"
                         CREATE TABLE IF NOT EXISTS SoldierStatuses (
                             StatusID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,9 +29,10 @@ namespace WpfApp1.Repositories
                         )";
                     connection.Execute(createStatusesTable);
 
-                    // 2. Безопасно добавляем новые колонки в таблицу Soldiers (для Отчества и Увольнения)
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN MiddleName TEXT"); } catch { }
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed INTEGER DEFAULT 0"); } catch { }
+                    // Пытаемся добавить JoinDate, если вдруг его не было в изначальной схеме (хотя в DataSeeder он есть)
+                    try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN JoinDate DATETIME DEFAULT CURRENT_DATE"); } catch { }
                 }
                 _isDbInitialized = true;
             }
@@ -44,6 +42,7 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
+                // ИСПРАВЛЕНИЕ: Теперь запрашиваем и дату зачисления (JoinDate)
                 string sql = @"
                     SELECT s.*, r.RankName, p.PositionName, u.UnitName
                     FROM Soldiers s
@@ -59,7 +58,6 @@ namespace WpfApp1.Repositories
 
                 var soldiers = connection.Query<SoldierModel>(sql).ToList();
 
-                // ИСПРАВЛЕНИЕ ОПТИМИЗАЦИИ: Загружаем только актуальные статусы на сегодняшний день, а не всю таблицу
                 string todayStr = DateTime.Today.ToString("yyyy-MM-dd");
                 string statusSql = @"
                     SELECT SoldierID, StatusType 
@@ -72,9 +70,11 @@ namespace WpfApp1.Repositories
                 {
                     var activeStatus = activeStatuses.FirstOrDefault(st => (int)st.SoldierID == s.SoldierID);
                     s.CurrentStatus = activeStatus != null ? (string)activeStatus.StatusType : "В строю";
+
+                    // Если JoinDate пустая (например, старые записи), ставим дефолтную
+                    if (s.JoinDate == DateTime.MinValue) s.JoinDate = DateTime.Today;
                 }
 
-                // Проверка нарядов на выбранную дату
                 if (dutyDate.HasValue)
                 {
                     string dutySql = @"
@@ -99,9 +99,33 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, MiddleName, ServiceType) 
-                               VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @MiddleName, @ServiceType)";
+                if (soldier.JoinDate == DateTime.MinValue) soldier.JoinDate = DateTime.Today;
+
+                string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, MiddleName, ServiceType, JoinDate) 
+                               VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @MiddleName, @ServiceType, @JoinDate)";
                 connection.Execute(sql, soldier);
+            }
+        }
+
+        // НОВЫЙ МЕТОД: Массовое добавление пополнения через транзакцию (очень быстро)
+        public void AddSoldiersBulk(IEnumerable<SoldierModel> soldiers)
+        {
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, MiddleName, ServiceType, JoinDate) 
+                                   VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @MiddleName, @ServiceType, @JoinDate)";
+
+                    foreach (var soldier in soldiers)
+                    {
+                        if (soldier.JoinDate == DateTime.MinValue) soldier.JoinDate = DateTime.Today;
+                        connection.Execute(sql, soldier, transaction);
+                    }
+
+                    transaction.Commit();
+                }
             }
         }
 
@@ -126,9 +150,6 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // ИСПРАВЛЕНИЕ КРИТИЧЕСКОГО БАГА: Убрано удаление предыдущих статусов бойца.
-                // Теперь история копится нормально, а не затирается.
-
                 if (statusType != "В строю")
                 {
                     string sql = "INSERT INTO SoldierStatuses (SoldierID, StatusType, StartDate, EndDate) VALUES (@Id, @Type, @Start, @End)";

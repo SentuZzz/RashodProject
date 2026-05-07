@@ -9,12 +9,13 @@ namespace WpfApp1.Models
         public int PositionID { get; set; }
         public int? UnitID { get; set; }
 
-        // Настоящие поля, которые заполняет база данных
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string MiddleName { get; set; }
 
-        // Умное поле: само собирает ФИО (например: Иванов И. И.)
+        public DateTime JoinDate { get; set; }
+
+        // Короткое ФИО (например: Иванов И. П.) - на случай если где-то еще используется
         public string FullName
         {
             get
@@ -25,15 +26,16 @@ namespace WpfApp1.Models
             }
         }
 
+        // ПОЛНОЕ ФИО (например: Иванов Иван Петрович) для нашей новой таблицы
+        public string FullNameExpanded => $"{LastName} {FirstName} {MiddleName}".Trim();
+
         public string ServiceType { get; set; }
         public bool IsDismissed { get; set; }
 
-        // Поля для отображения
         public string RankName { get; set; }
         public string PositionName { get; set; }
         public string UnitName { get; set; }
 
-        // Поля статусов
         public string CurrentStatus { get; set; } = "В строю";
         public bool IsOnActiveDuty { get; set; }
     }
