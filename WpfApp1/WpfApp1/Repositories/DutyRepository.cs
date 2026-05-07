@@ -112,7 +112,6 @@ namespace WpfApp1.Repositories
                                WHERE date(DutyDate) = date(@Tomorrow)
                                GROUP BY DutyID";
 
-                // ИСПРАВЛЕН БАГ ВЫЛЕТА: Безопасная конвертация из SQLite Int64 в Int32
                 var assignedCounts = connection.Query(sql, new { Tomorrow = tomorrow.ToString("yyyy-MM-dd") })
                                                .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
 
@@ -142,7 +141,6 @@ namespace WpfApp1.Repositories
                                WHERE date(DutyDate) = date(@TargetDate)
                                GROUP BY DutyID";
 
-                // ИСПРАВЛЕН БАГ ВЫЛЕТА: Безопасная конвертация
                 var assignedCounts = connection.Query(sql, new { TargetDate = targetDate.ToString("yyyy-MM-dd") })
                                                .ToDictionary(row => Convert.ToInt32(row.DutyID), row => Convert.ToInt32(row.AssignedCount));
 
@@ -165,6 +163,7 @@ namespace WpfApp1.Repositories
             var result = new List<ActiveDutyCardModel>();
             using (var connection = new SQLiteConnection(_connectionString))
             {
+
                 string sql = @"
             SELECT d.Location as GroupName, d.DutyName as RoleName, r.RankName, s.LastName, s.FirstName, s.Patronymic
             FROM DutyHistory dh
@@ -189,7 +188,7 @@ namespace WpfApp1.Repositories
                         rolesList.Add(new DutyRoleItem
                         {
                             RoleName = p.RoleName,
-                            PersonnelName = $"{rank} {p.LastName} {f}{m}"
+                            PersonnelName = $"{rank} {p.LastName} {f}{m}".Trim()
                         });
                     }
 

@@ -198,7 +198,7 @@ namespace WpfApp1.ViewModels
                 var query = SearchQuery.ToLower();
                 return (s.LastName != null && s.LastName.ToLower().Contains(query)) ||
                        (s.FirstName != null && s.FirstName.ToLower().Contains(query)) ||
-                       (s.MiddleName != null && s.MiddleName.ToLower().Contains(query)) ||
+                       (s.Patronymic != null && s.Patronymic.ToLower().Contains(query)) ||
                        (s.RankName != null && s.RankName.ToLower().Contains(query)) ||
                        (s.PositionName != null && s.PositionName.ToLower().Contains(query));
             }
@@ -234,7 +234,7 @@ namespace WpfApp1.ViewModels
                     {
                         LastName = ln,
                         FirstName = fn,
-                        MiddleName = mn,
+                        Patronymic = mn,
                         JoinDate = JoinDate,
                         RankID = SelectedRank.Id,
                         PositionID = SelectedPosition.Id,
@@ -256,7 +256,7 @@ namespace WpfApp1.ViewModels
                     SoldierID = _editingSoldierId,
                     LastName = LastName?.Trim(),
                     FirstName = FirstName?.Trim(),
-                    MiddleName = MiddleName?.Trim(),
+                    Patronymic = MiddleName?.Trim(),
                     JoinDate = JoinDate,
                     RankID = SelectedRank.Id,
                     PositionID = SelectedPosition.Id,
@@ -282,7 +282,7 @@ namespace WpfApp1.ViewModels
 
                 LastName = soldier.LastName;
                 FirstName = soldier.FirstName;
-                MiddleName = soldier.MiddleName;
+                MiddleName = soldier.Patronymic;
                 JoinDate = soldier.JoinDate == DateTime.MinValue ? DateTime.Today : soldier.JoinDate;
 
                 SelectedRank = Ranks.FirstOrDefault(r => r.Id == soldier.RankID) ?? Ranks.First();

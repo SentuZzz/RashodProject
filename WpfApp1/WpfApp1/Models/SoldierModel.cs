@@ -11,23 +11,21 @@ namespace WpfApp1.Models
 
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string MiddleName { get; set; }
+        public string Patronymic { get; set; } // ИСПРАВЛЕНО: Вернули правильное имя из БД!
 
         public DateTime JoinDate { get; set; }
 
-        // Короткое ФИО (например: Иванов И. П.) - на случай если где-то еще используется
         public string FullName
         {
             get
             {
                 string first = string.IsNullOrWhiteSpace(FirstName) ? "" : $"{FirstName[0]}.";
-                string middle = string.IsNullOrWhiteSpace(MiddleName) ? "" : $"{MiddleName[0]}.";
-                return $"{LastName} {first} {middle}".Trim();
+                string patronymic = string.IsNullOrWhiteSpace(Patronymic) ? "" : $"{Patronymic[0]}.";
+                return $"{LastName} {first} {patronymic}".Trim();
             }
         }
 
-        // ПОЛНОЕ ФИО (например: Иванов Иван Петрович) для нашей новой таблицы
-        public string FullNameExpanded => $"{LastName} {FirstName} {MiddleName}".Trim();
+        public string FullNameExpanded => $"{LastName} {FirstName} {Patronymic}".Trim();
 
         public string ServiceType { get; set; }
         public bool IsDismissed { get; set; }

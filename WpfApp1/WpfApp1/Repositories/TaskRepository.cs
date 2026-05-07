@@ -39,8 +39,9 @@ namespace WpfApp1.Repositories
                 string sqlTasks = "SELECT t.*, c.CategoryName FROM TaskHistory t JOIN TaskCategories c ON t.CategoryID = c.CategoryID";
                 tasks = connection.Query<TaskModel>(sqlTasks).ToList();
 
+                // ИСПРАВЛЕНИЕ: Добавлен s.MiddleName в SELECT
                 string sqlAssignments = @"
-                    SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, r.RankName, s.ServiceType
+                    SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, s.Patronymic, r.RankName, s.ServiceType
                     FROM TaskAssignments ta
                     JOIN Soldiers s ON ta.SoldierID = s.SoldierID
                     JOIN Ranks r ON s.RankID = r.RankID";
@@ -55,6 +56,7 @@ namespace WpfApp1.Repositories
                             SoldierID = (int)a.SoldierID,
                             LastName = (string)a.LastName,
                             FirstName = (string)a.FirstName,
+                            Patronymic = (string)a.MiddleName,
                             RankName = (string)a.RankName,
                             ServiceType = (string)a.ServiceType
                         }).ToList();
@@ -137,7 +139,6 @@ namespace WpfApp1.Repositories
             }
         }
 
-        // НОВЫЙ МЕТОД: Водопадный сдвиг задач в конце дня
         public void ShiftTasksForNewDay()
         {
             using (var connection = new SQLiteConnection(_connectionString))
@@ -145,7 +146,6 @@ namespace WpfApp1.Repositories
                 connection.Open();
                 using (var trans = connection.BeginTransaction())
                 {
-                    // Порядок критически важен! Идем с конца конвейера к началу, чтобы статусы не перезаписали друг друга
                     connection.Execute("UPDATE TaskHistory SET Status = 'В архиве' WHERE Status = 'Выполнено'", transaction: trans);
                     connection.Execute("UPDATE TaskHistory SET Status = 'Выполнено' WHERE Status = 'В процессе'", transaction: trans);
                     connection.Execute("UPDATE TaskHistory SET Status = 'В процессе' WHERE Status = 'К выполнению'", transaction: trans);
