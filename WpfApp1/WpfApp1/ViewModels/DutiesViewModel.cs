@@ -12,7 +12,7 @@ namespace WpfApp1.ViewModels
 {
     public class DutiesViewModel : ViewModelBase
     {
-        public DateTime MinAllowedDate => DateTime.Today.AddDays(-1);
+        public DateTime MinAllowedDate => DateTime.Today; // ИСПРАВЛЕНИЕ: Теперь минимальная дата - сегодня
 
         private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
         public Dictionary<DateTime, string> BusyDatesInfo
@@ -80,7 +80,7 @@ namespace WpfApp1.ViewModels
             set { _selectedDuty = value; OnPropertyChanged(); }
         }
 
-        private DateTime _selectedDate = DateTime.Today;
+        private DateTime _selectedDate;
         public DateTime SelectedDate
         {
             get { return _selectedDate; }
@@ -108,21 +108,19 @@ namespace WpfApp1.ViewModels
 
             AssignDutyCommand = new ViewModelCommand(ExecuteAssignDuty, CanExecuteAssignDuty);
 
+            // Инициализируем SelectedDate без вызова сеттера, чтобы избежать двойной загрузки
+            _selectedDate = DateTime.Today;
+            CustomAssignDate = DateTime.Today;
+
             UpdateDailyStatus();
-            LoadData();
+            LoadSoldiers(); // Заменили дублирующийся LoadData() на LoadSoldiers()
 
             AppMessenger.DirectoriesUpdated += () =>
             {
                 _allDuties = _dutyRepository.GetDuties();
-                LoadData(); LoadSoldiers(); UpdateDailyStatus();
+                LoadSoldiers();
+                UpdateDailyStatus();
             };
-        }
-
-        private void LoadData()
-        {
-            var data = _repository.GetAllSoldiers().Where(s => s.CurrentStatus == "В строю").ToList();
-            if (Soldiers == null) Soldiers = new ObservableCollection<SoldierModel>(data);
-            else { Soldiers.Clear(); foreach (var soldier in data) Soldiers.Add(soldier); }
         }
 
         private void LoadSoldiers()
@@ -176,7 +174,8 @@ namespace WpfApp1.ViewModels
         {
             DateTime targetDate = IsCustomDateVisible ? CustomAssignDate : SelectedDate;
 
-            if (targetDate.Date < DateTime.Today.AddDays(-1))
+            // ИСПРАВЛЕНИЕ: Строгая проверка на прошлое (раньше пропускало -1 день)
+            if (targetDate.Date < DateTime.Today)
             {
                 MessageBox.Show("Нельзя назначить наряд в прошлое!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
@@ -185,7 +184,7 @@ namespace WpfApp1.ViewModels
             try
             {
                 int capacity = SelectedDuty.Capacity;
-                int duration = SelectedDuty.Duration > 0 ? SelectedDuty.Duration : 1; // ИСПРАВЛЕНИЕ: Берем длительность из БД
+                int duration = SelectedDuty.Duration > 0 ? SelectedDuty.Duration : 1;
 
                 var allBusyDatesInfo = _dutyRepository.GetBusyDatesWithInfoForSoldier(SelectedSoldier.SoldierID);
 
@@ -255,6 +254,6 @@ namespace WpfApp1.ViewModels
             BusyDates = new ObservableCollection<DateTime>(BusyDatesInfo.Keys);
         }
 
-        private void RefreshView() { SelectedSoldier = null; SelectedDuty = null; LoadData(); }
+        private void RefreshView() { SelectedSoldier = null; SelectedDuty = null; LoadSoldiers(); }
     }
 }

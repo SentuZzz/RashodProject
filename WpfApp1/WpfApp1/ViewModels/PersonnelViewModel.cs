@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
@@ -9,13 +11,13 @@ using WpfApp1.Helpers;
 
 namespace WpfApp1.ViewModels
 {
-    public class PersonnelViewModel : ViewModelBase
+    // ИСПРАВЛЕНИЕ: Добавлен интерфейс IDisposable для очистки памяти
+    public class PersonnelViewModel : ViewModelBase, IDisposable
     {
         private readonly SoldierRepository _soldierRepo;
         private readonly DirectoryRepository _dirRepo;
 
         // Коллекции
-        private ObservableCollection<SoldierModel> _allSoldiers; // Оригинальный список (для поиска)
         private ObservableCollection<SoldierModel> _soldiers;
         public ObservableCollection<SoldierModel> Soldiers
         {
@@ -50,7 +52,7 @@ namespace WpfApp1.ViewModels
         private string _selectedServiceType;
         public string SelectedServiceType { get => _selectedServiceType; set { _selectedServiceType = value; OnPropertyChanged(); } }
 
-        // --- НОВЫЙ БЛОК: ПОИСК ---
+        // --- БЛОК ПОИСКА ---
         private string _searchQuery;
         public string SearchQuery
         {
@@ -59,11 +61,11 @@ namespace WpfApp1.ViewModels
             {
                 _searchQuery = value;
                 OnPropertyChanged();
-                FilterSoldiers(); // Фильтруем при каждом изменении текста
+                FilterSoldiers(); // Обновляем фильтр при вводе
             }
         }
 
-        // --- НОВЫЙ БЛОК: РЕДАКТИРОВАНИЕ ---
+        // --- БЛОК РЕДАКТИРОВАНИЯ ---
         private bool _isEditing;
         public bool IsEditing
         {
@@ -87,9 +89,9 @@ namespace WpfApp1.ViewModels
 
         // Команды
         public ICommand SaveSoldierCommand { get; }
-        public ICommand EditSoldierCommand { get; } // Новая команда
+        public ICommand EditSoldierCommand { get; }
         public ICommand DeleteSoldierCommand { get; }
-        public ICommand CancelEditCommand { get; } // Новая команда
+        public ICommand CancelEditCommand { get; }
 
         public PersonnelViewModel()
         {
@@ -104,6 +106,8 @@ namespace WpfApp1.ViewModels
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
 
             LoadData();
+
+            // Подписка на обновление справочников
             AppMessenger.DirectoriesUpdated += LoadData;
         }
 
@@ -127,31 +131,39 @@ namespace WpfApp1.ViewModels
 
         private void LoadSoldiers()
         {
-            _allSoldiers = new ObservableCollection<SoldierModel>(_soldierRepo.GetAllSoldiers());
-            FilterSoldiers(); // Запускаем фильтрацию (или выводим всех, если поиск пуст)
+            var rawSoldiers = _soldierRepo.GetAllSoldiers();
+            Soldiers = new ObservableCollection<SoldierModel>(rawSoldiers);
+
+            // ИСПРАВЛЕНИЕ: Настраиваем ICollectionView для плавной фильтрации без пересоздания списка
+            ICollectionView view = CollectionViewSource.GetDefaultView(Soldiers);
+            view.Filter = SoldierFilterPredicate;
         }
 
         // Логика фильтрации списка
         private void FilterSoldiers()
         {
-            if (_allSoldiers == null) return;
-
-            if (string.IsNullOrWhiteSpace(SearchQuery))
+            if (Soldiers != null)
             {
-                Soldiers = new ObservableCollection<SoldierModel>(_allSoldiers);
+                // Просто командуем View обновить отображение (применит предикат)
+                CollectionViewSource.GetDefaultView(Soldiers).Refresh();
             }
-            else
+        }
+
+        // Предикат (правило) для фильтрации элементов
+        private bool SoldierFilterPredicate(object item)
+        {
+            if (string.IsNullOrWhiteSpace(SearchQuery))
+                return true;
+
+            if (item is SoldierModel s)
             {
                 var query = SearchQuery.ToLower();
-                var filtered = _allSoldiers.Where(s =>
-                    (s.LastName != null && s.LastName.ToLower().Contains(query)) ||
-                    (s.FirstName != null && s.FirstName.ToLower().Contains(query)) ||
-                    (s.RankName != null && s.RankName.ToLower().Contains(query)) ||
-                    (s.PositionName != null && s.PositionName.ToLower().Contains(query))
-                ).ToList();
-
-                Soldiers = new ObservableCollection<SoldierModel>(filtered);
+                return (s.LastName != null && s.LastName.ToLower().Contains(query)) ||
+                       (s.FirstName != null && s.FirstName.ToLower().Contains(query)) ||
+                       (s.RankName != null && s.RankName.ToLower().Contains(query)) ||
+                       (s.PositionName != null && s.PositionName.ToLower().Contains(query));
             }
+            return false;
         }
 
         private bool CanExecuteSaveSoldier(object obj)
@@ -234,6 +246,12 @@ namespace WpfApp1.ViewModels
             SelectedPosition = Positions?.FirstOrDefault();
             SelectedUnit = Units?.FirstOrDefault();
             SelectedServiceType = ServiceTypes?.FirstOrDefault();
+        }
+
+        // ИСПРАВЛЕНИЕ: Отписываемся от событий при уничтожении ViewModel (предотвращает утечку памяти)
+        public void Dispose()
+        {
+            AppMessenger.DirectoriesUpdated -= LoadData;
         }
     }
 }

@@ -7,36 +7,33 @@ namespace WpfApp1.Models
         public int SoldierID { get; set; }
         public int RankID { get; set; }
         public int PositionID { get; set; }
-
-        // ИСПРАВЛЕНИЕ: Теперь UnitID может быть пустым (null), если солдат не в подразделении
         public int? UnitID { get; set; }
 
+        // Настоящие поля, которые заполняет база данных
         public string FirstName { get; set; }
         public string LastName { get; set; }
-
-        // ИСПРАВЛЕНИЕ: Добавлено Отчество, из-за которого ругался компилятор
         public string MiddleName { get; set; }
 
-        public string ServiceType { get; set; }
-        public bool IsDismissed { get; set; }
-
-        // --- Поля для отображения в интерфейсе (подтягиваются из других таблиц) ---
-        public string RankName { get; set; }
-        public string PositionName { get; set; }
-        public string UnitName { get; set; }
-
-        // Вычисляемое свойство для красивого вывода ФИО (Иванов И.И.)
+        // Умное поле: само собирает ФИО (например: Иванов И. И.)
         public string FullName
         {
             get
             {
-                string firstInitial = string.IsNullOrWhiteSpace(FirstName) ? "" : $"{FirstName[0]}.";
-                string middleInitial = string.IsNullOrWhiteSpace(MiddleName) ? "" : $"{MiddleName[0]}.";
-                return $"{LastName} {firstInitial}{middleInitial}".Trim();
+                string first = string.IsNullOrWhiteSpace(FirstName) ? "" : $"{FirstName[0]}.";
+                string middle = string.IsNullOrWhiteSpace(MiddleName) ? "" : $"{MiddleName[0]}.";
+                return $"{LastName} {first} {middle}".Trim();
             }
         }
 
-        // --- Поля статусов ---
+        public string ServiceType { get; set; }
+        public bool IsDismissed { get; set; }
+
+        // Поля для отображения
+        public string RankName { get; set; }
+        public string PositionName { get; set; }
+        public string UnitName { get; set; }
+
+        // Поля статусов
         public string CurrentStatus { get; set; } = "В строю";
         public bool IsOnActiveDuty { get; set; }
     }

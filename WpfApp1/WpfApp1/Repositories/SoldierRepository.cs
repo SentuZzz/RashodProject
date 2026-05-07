@@ -11,27 +11,32 @@ namespace WpfApp1.Repositories
     {
         private readonly string _connectionString = "Data Source=rashod.db;Version=3;Foreign Keys=True;";
 
-        // НОВЫЙ КОНСТРУКТОР: Автоматически обновляет структуру базы данных
+        // Статический флаг, чтобы обновлять структуру БД только один раз за запуск приложения
+        private static bool _isDbInitialized = false;
+
         public SoldierRepository()
         {
-            using (var connection = new SQLiteConnection(_connectionString))
+            if (!_isDbInitialized)
             {
-                // 1. Создаем таблицу статусов, если её еще нет в базе
-                string createStatusesTable = @"
-                    CREATE TABLE IF NOT EXISTS SoldierStatuses (
-                        StatusID INTEGER PRIMARY KEY AUTOINCREMENT,
-                        SoldierID INTEGER NOT NULL,
-                        StatusType TEXT NOT NULL,
-                        StartDate DATETIME NOT NULL,
-                        EndDate DATETIME NOT NULL,
-                        FOREIGN KEY(SoldierID) REFERENCES Soldiers(SoldierID) ON DELETE CASCADE
-                    )";
-                connection.Execute(createStatusesTable);
+                using (var connection = new SQLiteConnection(_connectionString))
+                {
+                    // 1. Создаем таблицу статусов, если её еще нет в базе
+                    string createStatusesTable = @"
+                        CREATE TABLE IF NOT EXISTS SoldierStatuses (
+                            StatusID INTEGER PRIMARY KEY AUTOINCREMENT,
+                            SoldierID INTEGER NOT NULL,
+                            StatusType TEXT NOT NULL,
+                            StartDate DATETIME NOT NULL,
+                            EndDate DATETIME NOT NULL,
+                            FOREIGN KEY(SoldierID) REFERENCES Soldiers(SoldierID) ON DELETE CASCADE
+                        )";
+                    connection.Execute(createStatusesTable);
 
-                // 2. Безопасно добавляем новые колонки в таблицу Soldiers (для Отчества и Увольнения)
-                // Используем try-catch, потому что если колонки уже есть, SQLite выдаст ошибку, которую мы просто проигнорируем
-                try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN MiddleName TEXT"); } catch { }
-                try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed INTEGER DEFAULT 0"); } catch { }
+                    // 2. Безопасно добавляем новые колонки в таблицу Soldiers (для Отчества и Увольнения)
+                    try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN MiddleName TEXT"); } catch { }
+                    try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed INTEGER DEFAULT 0"); } catch { }
+                }
+                _isDbInitialized = true;
             }
         }
 
@@ -54,15 +59,18 @@ namespace WpfApp1.Repositories
 
                 var soldiers = connection.Query<SoldierModel>(sql).ToList();
 
-                // Загрузка статусов (в отпуске, в госпитале и т.д.)
-                var statuses = connection.Query("SELECT * FROM SoldierStatuses").ToList();
+                // ИСПРАВЛЕНИЕ ОПТИМИЗАЦИИ: Загружаем только актуальные статусы на сегодняшний день, а не всю таблицу
+                string todayStr = DateTime.Today.ToString("yyyy-MM-dd");
+                string statusSql = @"
+                    SELECT SoldierID, StatusType 
+                    FROM SoldierStatuses 
+                    WHERE date(StartDate) <= date(@Today) AND date(EndDate) >= date(@Today)";
+
+                var activeStatuses = connection.Query(statusSql, new { Today = todayStr }).ToList();
+
                 foreach (var s in soldiers)
                 {
-                    var activeStatus = statuses.FirstOrDefault(st =>
-                        st.SoldierID == s.SoldierID &&
-                        DateTime.Parse(st.StartDate.ToString()) <= DateTime.Today &&
-                        DateTime.Parse(st.EndDate.ToString()) >= DateTime.Today);
-
+                    var activeStatus = activeStatuses.FirstOrDefault(st => (int)st.SoldierID == s.SoldierID);
                     s.CurrentStatus = activeStatus != null ? (string)activeStatus.StatusType : "В строю";
                 }
 
@@ -118,7 +126,8 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                connection.Execute("DELETE FROM SoldierStatuses WHERE SoldierID = @Id", new { Id = soldierId });
+                // ИСПРАВЛЕНИЕ КРИТИЧЕСКОГО БАГА: Убрано удаление предыдущих статусов бойца.
+                // Теперь история копится нормально, а не затирается.
 
                 if (statusType != "В строю")
                 {
