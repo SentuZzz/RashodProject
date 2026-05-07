@@ -233,13 +233,47 @@ namespace WpfApp1.ViewModels
 
         private void FilterDuties()
         {
-            AvailableDuties.Clear(); SelectedDuty = null;
+            AvailableDuties.Clear();
+            SelectedDuty = null;
             if (_selectedSoldier == null) return;
+
+            string rank = _selectedSoldier.RankName?.ToLower() ?? "";
+            string pos = _selectedSoldier.PositionName?.ToLower() ?? "";
+
+            // Определяем военный статус бойца
+            bool isOfficerOrWarrant = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор") || rank.Contains("прапорщик") || rank.Contains("старшина");
+            bool isSergeant = rank.Contains("сержант");
+            bool isCommander = pos.Contains("командир роты") || pos.Contains("командир взвода");
 
             foreach (var duty in _allDuties)
             {
-                if (_selectedSoldier.ServiceType == "По контракту" && duty.RolePriority <= 2) AvailableDuties.Add(duty);
-                else if (_selectedSoldier.ServiceType == "По призыву" && duty.RolePriority >= 2) AvailableDuties.Add(duty);
+                string dutyName = duty.DutyName.ToLower();
+
+                // Офицеры и Командиры: Только самые ответственные наряды (Приоритет 1 или по названию)
+                if (isOfficerOrWarrant || isCommander)
+                {
+                    if (duty.RolePriority == 1 || dutyName.Contains("ответственный") || dutyName.Contains("дежурный по роте"))
+                    {
+                        AvailableDuties.Add(duty);
+                    }
+                }
+                // Сержанты: Дежурные по КПП, Начальники караула (Приоритет 2)
+                else if (isSergeant)
+                {
+                    if (duty.RolePriority == 2 || dutyName.Contains("начальник караула") || dutyName.Contains("дежурный по кпп") || dutyName.Contains("помощник"))
+                    {
+                        AvailableDuties.Add(duty);
+                    }
+                }
+                // Рядовые и Ефрейторы: Дневальные, караульные, патруль, рабочие (Приоритет 3+)
+                else
+                {
+                    // Рядовой не может быть "Дежурным" или "Начальником"
+                    if (duty.RolePriority >= 3 || (!dutyName.Contains("дежурный") && !dutyName.Contains("ответственный") && !dutyName.Contains("начальник")))
+                    {
+                        AvailableDuties.Add(duty);
+                    }
+                }
             }
         }
 
