@@ -61,7 +61,7 @@
                         <fa:IconImage Icon="UserCheck" Foreground="#16A34A" Width="24" Height="24"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="В строю (Боевые)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="В строю" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding InFormationCount}" FontSize="26" FontWeight="Bold" Foreground="#1E293B" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
@@ -121,7 +121,7 @@
                         <fa:IconImage Icon="UserGraduate" Foreground="#6366F1" Width="24" Height="24"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="КМБ (ВМП)" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="ВМП" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
                         <TextBlock Text="{Binding VmpCount}" FontSize="26" FontWeight="Bold" Foreground="#1E293B" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
