@@ -6,109 +6,177 @@
              xmlns:helpers="clr-namespace:WpfApp1.Helpers"
              xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="700" d:DesignWidth="1100">
+
     <Grid Margin="20">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="350"/>
         </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
-        <!-- ВЕРХНЯЯ ПАНЕЛЬ С ЗАГОЛОВКОМ И ФИЛЬТРОМ -->
-        <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="СУТОЧНЫЕ НАРЯДЫ" Foreground="{StaticResource secondaryBackBrush}" FontSize="24" FontWeight="Bold" Margin="0,0,0,5"/>
-            <!-- Наш новый чекбокс-фильтр -->
-            <CheckBox Content="Скрыть отсутствующих и занятых в наряде" 
-                      IsChecked="{Binding HideUnavailable}" 
-                      Foreground="#64748B" FontSize="13" FontWeight="SemiBold" 
-                      VerticalAlignment="Center" Cursor="Hand"/>
-        </StackPanel>
-
-        <!-- ЛЕВАЯ ПАНЕЛЬ: ТАБЛИЦА -->
-        <DataGrid Grid.Column="0" Grid.Row="1" ItemsSource="{Binding Soldiers}" SelectedItem="{Binding SelectedSoldier}"
-                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White"
-                  RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column"
-                  BorderThickness="0" Margin="0,0,20,0" SelectionChanged="DataGrid_SelectionChanged">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding SoldierID}" Width="35"/>
-
-                <!-- НОВАЯ КОЛОНКА "СТАТУС" (СВЕТОФОР) -->
-                <DataGridTemplateColumn Header="Статус" Width="110" SortMemberPath="AvailabilityText">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,0,0">
-                                <!-- Цветной кружочек -->
-                                <Border Width="10" Height="10" CornerRadius="5" Background="{Binding AvailabilityColor, Mode=OneWay}" Margin="0,0,8,0">
-                                    <Border.Effect>
-                                        <DropShadowEffect BlurRadius="4" Color="{Binding AvailabilityColor, Mode=OneWay}" Opacity="0.4" ShadowDepth="0"/>
-                                    </Border.Effect>
-                                </Border>
-                                <!-- Текст статуса -->
-                                <TextBlock Text="{Binding AvailabilityText, Mode=OneWay}" Foreground="{Binding AvailabilityColor, Mode=OneWay}" FontWeight="SemiBold"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-
-                <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="150"/>
-                <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="100"/>
-
-                <!-- Бейджик типа службы -->
-                <DataGridTemplateColumn Header="Тип службы" Width="90" SortMemberPath="ServiceType">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="#EEEEEE"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding ServiceType}" Value="По контракту">
-                                                <Setter Property="Background" Value="#D4EDDA"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding ServiceType}" FontSize="11" FontWeight="SemiBold">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#666666"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding ServiceType}" Value="По контракту">
-                                                    <Setter Property="Foreground" Value="#155724"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Border>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Должность" Binding="{Binding PositionName}" Width="110"/>
-                <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="110"/>
-            </DataGrid.Columns>
-        </DataGrid>
-
-        <!-- ПРАВАЯ ПАНЕЛЬ -->
-        <Border Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Background="White" CornerRadius="10" Padding="15">
+        <Border Grid.Column="0" Background="White" CornerRadius="10" Margin="0,0,20,0" Padding="15">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
+                <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="Суточные наряды" FontSize="24" FontWeight="Bold" Foreground="#1E293B" VerticalAlignment="Center"/>
+
+                    <CheckBox Grid.Column="1" Content="Скрыть недоступных" 
+                              IsChecked="{Binding HideUnavailable}" 
+                              Foreground="#64748B" FontSize="13" FontWeight="SemiBold" 
+                              VerticalAlignment="Center" Cursor="Hand"/>
+                </Grid>
+
+                <DataGrid Grid.Row="1" ItemsSource="{Binding Soldiers}" SelectedItem="{Binding SelectedSoldier}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" Background="White"
+                          RowBackground="#F9F9F9" AlternatingRowBackground="#FFFFFF" HeadersVisibility="Column"
+                          BorderThickness="0" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E2E8F0"
+                          SelectionChanged="DataGrid_SelectionChanged"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                    <DataGrid.Resources>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#F1F5F9"/>
+                            <Setter Property="Foreground" Value="#64748B"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                        </Style>
+                        <Style TargetType="DataGridCell">
+                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="DataGridCell">
+                                        <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.Resources>
+
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Звание" Binding="{Binding RankName}" Width="Auto" MinWidth="80"/>
+
+                        <DataGridTextColumn Header="ФИО" Binding="{Binding FullName}" Width="*" MinWidth="130"/>
+
+                        <DataGridTemplateColumn Header="Статус" Width="Auto" MinWidth="100" SortMemberPath="CurrentStatus">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#ECFDF5"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
+                                                        <Setter Property="Background" Value="#EFF6FF"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="Госпиталь">
+                                                        <Setter Property="Background" Value="#FEF2F2"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="Командировка">
+                                                        <Setter Property="Background" Value="#FFFBEB"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsOnActiveDuty}" Value="True">
+                                                        <Setter Property="Background" Value="#F3E8FF"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock FontSize="11" FontWeight="Bold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding CurrentStatus}"/>
+                                                    <Setter Property="Foreground" Value="#10B981"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
+                                                            <Setter Property="Foreground" Value="#3B82F6"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="Госпиталь">
+                                                            <Setter Property="Foreground" Value="#EF4444"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="Командировка">
+                                                            <Setter Property="Foreground" Value="#F59E0B"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsOnActiveDuty}" Value="True">
+                                                            <Setter Property="Text" Value="В наряде"/>
+                                                            <Setter Property="Foreground" Value="#9333EA"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="Тип службы" Width="Auto" MinWidth="90" SortMemberPath="ServiceType">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#F1F5F9"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ServiceType}" Value="По контракту">
+                                                        <Setter Property="Background" Value="#ECFDF5"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding ServiceType}" FontSize="11" FontWeight="Bold" Foreground="#64748B">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ServiceType}" Value="По контракту">
+                                                            <Setter Property="Foreground" Value="#10B981"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Должность" Binding="{Binding PositionName}" Width="*" MinWidth="100"/>
+                        <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="*" MinWidth="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <Border Grid.Column="1" Background="White" CornerRadius="10" Padding="20">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
             </Border.Effect>
 
-            <!-- ScrollViewer для защиты от перекрытий -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,5,0">
                 <StackPanel>
                     <TextBlock Text="Назначение" FontSize="18" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
+
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
-                        <fa:IconImage Icon="CalendarAlt" Foreground="#344E41" Width="22" Height="22" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Дата наряда:" FontSize="12" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Center" Margin="0,0,15,0"/>
+                        <fa:IconImage Icon="CalendarAlt" Foreground="#3B82F6" Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Дата наряда:" FontSize="13" FontWeight="Bold" Foreground="#1E293B" VerticalAlignment="Center" Margin="0,0,15,0"/>
                         <DatePicker SelectedDate="{Binding SelectedDate}" Width="140" Height="30" FontSize="14" Cursor="Hand"/>
                     </StackPanel>
-                    <!-- РАСКРЫВАЮЩИЙСЯ ЧЕК-ЛИСТ -->
-                    <Expander Header="Чек-лист на выбранную дату" Margin="0,0,0,20" Foreground="#344E41" FontWeight="Bold" FontSize="14" IsExpanded="True">
+
+                    <Expander Header="Чек-лист на дату" Margin="0,0,0,20" Foreground="#1E293B" FontWeight="Bold" FontSize="13" IsExpanded="True">
                         <ItemsControl ItemsSource="{Binding DailyDutiesStatus}" Margin="0,10,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -118,9 +186,8 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-
                                         <fa:IconImage Grid.Column="0" Icon="{Binding IconName, Mode=OneWay}" Foreground="{Binding StatusColor, Mode=OneWay}" Width="14" Height="14" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding DutyName}" FontSize="13" Foreground="#1E293B" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DutyName}" FontSize="13" Foreground="#1E293B" Margin="8,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                         <TextBlock Grid.Column="2" FontSize="12" FontWeight="SemiBold" Foreground="{Binding StatusColor, Mode=OneWay}" VerticalAlignment="Center">
                                             <Run Text="{Binding Assigned, Mode=OneWay}"/>
                                             <Run Text="/" Foreground="Gray"/>
@@ -132,43 +199,22 @@
                         </ItemsControl>
                     </Expander>
 
-                    <TextBlock Text="Выберите военнослужащего в таблице..." Foreground="Gray" TextWrapping="Wrap" 
+                    <TextBlock Text="Выберите военнослужащего слева..." Foreground="#94A3B8" FontStyle="Italic"
                                Visibility="{Binding SelectedSoldier, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Visible}"/>
 
-                    <StackPanel>
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SelectedSoldier}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
+                    <StackPanel Visibility="{Binding SelectedSoldier, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}">
+                        <TextBlock Text="Военнослужащий:" Foreground="#94A3B8" FontSize="11" Margin="0,10,0,0"/>
+                        <TextBlock Text="{Binding SelectedSoldier.FullName}" FontSize="16" FontWeight="Bold" Foreground="#1E293B"/>
+                        <TextBlock Text="{Binding SelectedSoldier.RankName}" FontSize="13" Foreground="#334155"/>
 
-                        <TextBlock Text="Военнослужащий:" Foreground="Gray" FontSize="12" Margin="0,10,0,0"/>
-                        <TextBlock Text="{Binding SelectedSoldier.FullName}" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding SelectedSoldier.RankName}" FontSize="14"/>
-
-                        <TextBlock Text="Должность:" Foreground="Gray" FontSize="12" Margin="0,15,0,0"/>
-                        <TextBlock Text="{Binding SelectedSoldier.PositionName}" FontSize="14" TextWrapping="Wrap"/>
-
-                        <TextBlock Text="Подразделение:" Foreground="Gray" FontSize="12" Margin="0,15,0,0"/>
-                        <TextBlock Text="{Binding SelectedSoldier.UnitName}" FontSize="14"/>
-
-                        <Border Background="#F5F5F5" CornerRadius="8" Padding="15" Margin="0,25,0,0">
+                        <Border Background="#F1F5F9" CornerRadius="8" Padding="15" Margin="0,20,0,0">
                             <StackPanel>
-                                <TextBlock Text="Параметры наряда" FontSize="14" FontWeight="Bold" Foreground="#344E41" Margin="0,0,0,15"/>
+                                <TextBlock Text="Доступные наряды:" Foreground="#64748B" FontSize="11" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding AvailableDuties}" SelectedItem="{Binding SelectedDuty}" DisplayMemberPath="DutyName" Height="30" Margin="0,0,0,15"/>
 
-                                <TextBlock Text="Выберите наряд:" Foreground="Gray" FontSize="12"/>
-                                <ComboBox ItemsSource="{Binding AvailableDuties}" SelectedItem="{Binding SelectedDuty}" DisplayMemberPath="DutyName" Margin="0,5,0,15" Height="30" Padding="5"/>
-
-                                <TextBlock Text="Дата заступления:" Foreground="Gray" FontSize="12"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,20" Height="30">
-
-                                    <!-- Кнопка переключения (Плюс / Отмена) -->
-                                    <Button Command="{Binding ToggleCustomDateCommand}" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand" VerticalAlignment="Center" ToolTip="Назначить вне очереди (другая дата)">
+                                <TextBlock Text="Дата заступления:" Foreground="#64748B" FontSize="11" Margin="0,0,0,5"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                                    <Button Command="{Binding ToggleCustomDateCommand}" Background="Transparent" BorderThickness="0" Margin="0,0,10,0" Cursor="Hand">
                                         <fa:IconImage Width="18" Height="18">
                                             <fa:IconImage.Style>
                                                 <Style TargetType="fa:IconImage">
@@ -185,9 +231,8 @@
                                         </fa:IconImage>
                                     </Button>
 
-                                    <!-- Обычный текст (Используется Глобальная дата) -->
                                     <TextBlock Text="{Binding SelectedDate, StringFormat='{}{0:dd.MM.yyyy} (По плану)'}" 
-                                        FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#1E293B">
+                                               FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Foreground="#1E293B">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Visible"/>
@@ -200,10 +245,9 @@
                                         </TextBlock.Style>
                                     </TextBlock>
 
-                                    <!-- Скрытый кастомный DatePicker для внеочередного наряда -->
                                     <DatePicker SelectedDate="{Binding CustomAssignDate}" 
-                                        helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" 
-                                        Width="140" VerticalAlignment="Center" Cursor="Hand">
+                                                helpers:DatePickerHelper.BlackoutDates="{Binding BusyDates}" 
+                                                Width="140" VerticalAlignment="Center" Cursor="Hand">
                                         <DatePicker.Style>
                                             <Style TargetType="DatePicker">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -221,8 +265,8 @@
                                                         <Style TargetType="CalendarDayButton">
                                                             <Style.Triggers>
                                                                 <Trigger Property="IsBlackedOut" Value="True">
-                                                                    <Setter Property="Background" Value="#FFDDDD"/>
-                                                                    <Setter Property="Foreground" Value="#D32F2F"/>
+                                                                    <Setter Property="Background" Value="#FEE2E2"/>
+                                                                    <Setter Property="Foreground" Value="#EF4444"/>
                                                                     <Setter Property="ToolTip">
                                                                         <Setter.Value>
                                                                             <MultiBinding Converter="{StaticResource DateTooltipConverter}">
@@ -241,10 +285,10 @@
                                     </DatePicker>
                                 </StackPanel>
 
-                                <Button Content="Назначить" Command="{Binding AssignDutyCommand}" Height="35" Background="#344E41" Foreground="White" BorderThickness="0" Cursor="Hand">
+                                <Button Content="Назначить в наряд" Command="{Binding AssignDutyCommand}" Height="35" Background="#3B82F6" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
                                     <Button.Resources>
                                         <Style TargetType="Border">
-                                            <Setter Property="CornerRadius" Value="5"/>
+                                            <Setter Property="CornerRadius" Value="6"/>
                                         </Style>
                                     </Button.Resources>
                                 </Button>
