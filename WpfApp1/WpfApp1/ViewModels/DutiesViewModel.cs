@@ -239,40 +239,96 @@ namespace WpfApp1.ViewModels
 
             string rank = _selectedSoldier.RankName?.ToLower() ?? "";
             string pos = _selectedSoldier.PositionName?.ToLower() ?? "";
+            bool isConscript = _selectedSoldier.ServiceType == "По призыву";
+            bool isContractor = _selectedSoldier.ServiceType == "По контракту";
 
-            // Определяем военный статус бойца
-            bool isOfficerOrWarrant = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор") || rank.Contains("прапорщик") || rank.Contains("старшина");
-            bool isSergeant = rank.Contains("сержант");
-            bool isCommander = pos.Contains("командир роты") || pos.Contains("командир взвода");
+            // Группировка званий
+            bool isSoldier = rank == "рядовой" || rank == "ефрейтор";
+            bool isSergeant = rank.Contains("сержант") || (rank.Contains("старшина") && !rank.Contains("прапорщик"));
+            bool isWarrant = rank.Contains("прапорщик");
+            bool isOfficer = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор");
+
+            // Группировка должностей
+            bool isSoldierPos = pos.Contains("стрелок") || pos.Contains("пулеметчик") || pos.Contains("гранатометчик") || pos.Contains("наводчик") || pos.Contains("водитель");
 
             foreach (var duty in _allDuties)
             {
                 string dutyName = duty.DutyName.ToLower();
 
-                // Офицеры и Командиры: Только самые ответственные наряды (Приоритет 1 или по названию)
-                if (isOfficerOrWarrant || isCommander)
+                // 1. Дежурный по роте
+                if (dutyName.Contains("дежурный по роте"))
                 {
-                    if (duty.RolePriority == 1 || dutyName.Contains("ответственный") || dutyName.Contains("дежурный по роте"))
-                    {
-                        AvailableDuties.Add(duty);
-                    }
+                    // Сержанты, либо солдаты-контрактники (как исключение)
+                    if (isSergeant || (isSoldier && isContractor)) AvailableDuties.Add(duty);
                 }
-                // Сержанты: Дежурные по КПП, Начальники караула (Приоритет 2)
-                else if (isSergeant)
+                // 2. Помощник дежурного по роте
+                else if (dutyName.Contains("помощник дежурного по роте"))
                 {
-                    if (duty.RolePriority == 2 || dutyName.Contains("начальник караула") || dutyName.Contains("дежурный по кпп") || dutyName.Contains("помощник"))
-                    {
-                        AvailableDuties.Add(duty);
-                    }
+                    if (isSoldier || isSergeant) AvailableDuties.Add(duty);
                 }
-                // Рядовые и Ефрейторы: Дневальные, караульные, патруль, рабочие (Приоритет 3+)
+                // 3. Дневальный по роте
+                else if (dutyName.Contains("дневальный по роте"))
+                {
+                    // Солдаты, ИЛИ сержанты-срочники на солдатских должностях
+                    if (isSoldier || (isSergeant && isConscript && isSoldierPos)) AvailableDuties.Add(duty);
+                }
+                // 4. Начальник караула
+                else if (dutyName.Contains("начальник караула"))
+                {
+                    if (isOfficer || isWarrant || (isSergeant && isContractor)) AvailableDuties.Add(duty);
+                }
+                // 5. Караульный
+                else if (dutyName.Contains("караульный") && !dutyName.Contains("начальник"))
+                {
+                    // Солдаты, ИЛИ сержанты на солдатских должностях
+                    if (isSoldier || (isSergeant && isSoldierPos)) AvailableDuties.Add(duty);
+                }
+                // 6. Группа Антитеррора (Исполнители)
+                else if (dutyName.Contains("антитеррор") && !dutyName.Contains("командир"))
+                {
+                    if (isSoldier || isSergeant) AvailableDuties.Add(duty);
+                }
+                // 7. Командир подразд. Антитеррора
+                else if (dutyName.Contains("антитеррор") && dutyName.Contains("командир"))
+                {
+                    if (isOfficer || isWarrant || isSergeant) AvailableDuties.Add(duty);
+                }
+                // 8. Начальник патруля
+                else if (dutyName.Contains("начальник патруля"))
+                {
+                    if (isSergeant) AvailableDuties.Add(duty);
+                }
+                // 9. Патрульный
+                else if (dutyName.Contains("патрульный") && !dutyName.Contains("начальник"))
+                {
+                    if (isSoldier || isSergeant) AvailableDuties.Add(duty);
+                }
+                // 10. Дежурный по парку
+                else if (dutyName.Contains("дежурный по парку"))
+                {
+                    if (isOfficer || isWarrant || isSergeant) AvailableDuties.Add(duty);
+                }
+                // 11. Дневальный по парку
+                else if (dutyName.Contains("дневальный по парку"))
+                {
+                    if (isSoldier || (isSergeant && isConscript)) AvailableDuties.Add(duty);
+                }
+                // 12. Дежурный по КПП
+                else if (dutyName.Contains("дежурный по кпп"))
+                {
+                    if (isSergeant || isWarrant) AvailableDuties.Add(duty);
+                }
+                // 13. Дневальный по КПП
+                else if (dutyName.Contains("дневальный по кпп"))
+                {
+                    if (isSoldier) AvailableDuties.Add(duty);
+                }
+                // Неучтенные наряды (распределяем по приоритету БД)
                 else
                 {
-                    // Рядовой не может быть "Дежурным" или "Начальником"
-                    if (duty.RolePriority >= 3 || (!dutyName.Contains("дежурный") && !dutyName.Contains("ответственный") && !dutyName.Contains("начальник")))
-                    {
-                        AvailableDuties.Add(duty);
-                    }
+                    if (isOfficer || isWarrant) { if (duty.RolePriority <= 1) AvailableDuties.Add(duty); }
+                    else if (isSergeant) { if (duty.RolePriority <= 2) AvailableDuties.Add(duty); }
+                    else { if (duty.RolePriority >= 3) AvailableDuties.Add(duty); }
                 }
             }
         }

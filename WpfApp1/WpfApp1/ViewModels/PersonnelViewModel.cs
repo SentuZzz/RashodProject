@@ -243,32 +243,46 @@ namespace WpfApp1.ViewModels
                 }
 
                 // 3. ФИЛЬТРАЦИЯ ДОЛЖНОСТЕЙ В ЗАВИСИМОСТИ ОТ ЗВАНИЯ
+                // 3. ФИЛЬТРАЦИЯ ДОЛЖНОСТЕЙ В ЗАВИСИМОСТИ ОТ ЗВАНИЯ (ПО УСТАВУ)
                 var currentPosId = SelectedPosition?.Id;
                 var allowedPositions = new List<DirectoryItemModel>();
 
                 if (SelectedRank != null && !string.IsNullOrEmpty(SelectedRank.Name))
                 {
                     string rank = SelectedRank.Name.ToLower();
-                    bool isOfficerOrWarrant = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор") || rank.Contains("прапорщик") || rank.Contains("старшина") || rank.Contains("полковник") || rank.Contains("генерал");
-                    bool isSergeant = rank.Contains("сержант");
+                    bool isPrivate = rank == "рядовой";
+                    bool isCorporal = rank == "ефрейтор";
+                    bool isSergeant = rank.Contains("сержант") || (rank.Contains("старшина") && !rank.Contains("прапорщик"));
+                    bool isWarrant = rank.Contains("прапорщик");
+                    bool isOfficer = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор");
 
                     foreach (var pos in _allPositions)
                     {
                         string p = pos.Name?.ToLower() ?? "";
-                        bool isCommander = p.Contains("командир роты") || p.Contains("командир взвода") || p.Contains("заместитель командира роты") || p.Contains("старшина") || p.Contains("техник");
-                        bool isSquadLeader = p.Contains("командир отделения") || p.Contains("заместитель командира взвода");
 
-                        if (isOfficerOrWarrant)
+                        // Категории должностей по штату
+                        bool isSoldierPos = p.Contains("стрелок") || p.Contains("пулеметчик") || p.Contains("гранатометчик") || p.Contains("наводчик") || p.Contains("водитель");
+                        bool isSeniorSoldierPos = p.Contains("старший стрелок");
+                        bool isSquadLeader = p.Contains("командир отделения");
+                        bool isDepPlatoonLeader = p.Contains("заместитель командира взвода");
+                        bool isCompanySergeant = p.Contains("старшина роты");
+                        bool isWarehouseChief = p.Contains("начальник склада");
+                        bool isPlatoonLeader = p.Contains("командир взвода");
+                        bool isDepCompanyLeader = p.Contains("заместитель командира роты") || p.Contains("замполит");
+                        bool isCompanyLeader = p.Equals("командир роты");
+
+                        // Матрица допуска
+                        if (isPrivate && isSoldierPos) allowedPositions.Add(pos);
+                        else if (isCorporal && (isSoldierPos || isSeniorSoldierPos)) allowedPositions.Add(pos);
+                        // Сержантам разрешаем быть сержантами, но также временно стоять на солдатских должностях (как указано в доке)
+                        else if (isSergeant && (isSquadLeader || isDepPlatoonLeader || isSoldierPos)) allowedPositions.Add(pos);
+                        else if (isWarrant && (isCompanySergeant || isWarehouseChief || isPlatoonLeader)) allowedPositions.Add(pos);
+                        else if (isOfficer && (isPlatoonLeader || isDepCompanyLeader || isCompanyLeader)) allowedPositions.Add(pos);
+
+                        // Если должность нестандартная (не описана в документе), разрешаем ее всем, чтобы не заблокировать систему
+                        else if (!isSoldierPos && !isSeniorSoldierPos && !isSquadLeader && !isDepPlatoonLeader && !isCompanySergeant && !isWarehouseChief && !isPlatoonLeader && !isDepCompanyLeader && !isCompanyLeader)
                         {
-                            if (isCommander || isSquadLeader) allowedPositions.Add(pos);
-                        }
-                        else if (isSergeant)
-                        {
-                            if (isSquadLeader && !isCommander) allowedPositions.Add(pos);
-                        }
-                        else
-                        {
-                            if (!isCommander && !isSquadLeader) allowedPositions.Add(pos);
+                            allowedPositions.Add(pos);
                         }
                     }
                 }
