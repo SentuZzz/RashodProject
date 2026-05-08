@@ -54,7 +54,6 @@ namespace WpfApp1.ViewModels
         public ICommand EditItemCommand { get; }
         public ICommand CancelEditCommand { get; }
 
-        // НОВЫЕ КОМАНДЫ ДЛЯ БЭКАПОВ
         public ICommand CreateBackupCommand { get; }
         public ICommand RestoreBackupCommand { get; }
 
@@ -70,7 +69,6 @@ namespace WpfApp1.ViewModels
             EditItemCommand = new ViewModelCommand(ExecuteEditItem);
             CancelEditCommand = new ViewModelCommand(o => ResetForm());
 
-            // Инициализация команд бэкапа (вызывают методы из нашего нового Helper'а)
             CreateBackupCommand = new ViewModelCommand(o => BackupHelper.CreateManualBackup());
             RestoreBackupCommand = new ViewModelCommand(o => BackupHelper.RestoreBackup());
 
@@ -88,10 +86,13 @@ namespace WpfApp1.ViewModels
             OnPropertyChanged(nameof(SimpleFormVisibility)); OnPropertyChanged(nameof(DutyFormVisibility));
         }
 
-        private bool CanExecuteSaveItem(object obj) => !string.IsNullOrWhiteSpace(NewItemName);
+        // ИСПРАВЛЕНИЕ: Блокируем кнопку сохранения (добавления), если выбраны "Звания"
+        private bool CanExecuteSaveItem(object obj) => !string.IsNullOrWhiteSpace(NewItemName) && SelectedMenu != "Звания";
 
         private void ExecuteSaveItem(object obj)
         {
+            if (SelectedMenu == "Звания") return; // Дополнительная защита
+
             if (CurrentItems.Any(x => x.Name.Equals(NewItemName?.Trim(), StringComparison.OrdinalIgnoreCase) && (!IsEditing || x.Id != _editingItemId)))
             {
                 MessageBox.Show("Такая запись уже существует в справочнике!", "Ошибка дублирования", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -125,7 +126,7 @@ namespace WpfApp1.ViewModels
                 {
                     if (SelectedMenu == "Виды нарядов") _repo.AddDuty(NewItemName, SelectedPriority.Value, NewDutyLocation, capacity, duration);
                     else if (SelectedMenu == "Подразделения") _repo.AddItem("Units", "UnitName", NewItemName);
-                    else if (SelectedMenu == "Звания") _repo.AddItem("Ranks", "RankName", NewItemName);
+                    // Добавление званий убрано из логики
                     else if (SelectedMenu == "Должности") _repo.AddItem("Positions", "PositionName", NewItemName);
                     else if (SelectedMenu == "Категории задач") _repo.AddItem("TaskCategories", "CategoryName", NewItemName);
                 }
@@ -140,6 +141,13 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteEditItem(object obj)
         {
+            // ИСПРАВЛЕНИЕ: Блокируем редактирование званий
+            if (SelectedMenu == "Звания")
+            {
+                MessageBox.Show("Редактирование воинских званий запрещено, так как они строго регламентированы общевоинскими уставами.", "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             if (obj is DirectoryItemModel item)
             {
                 IsEditing = true; _editingItemId = item.Id; NewItemName = item.Name;
@@ -161,6 +169,13 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteDeleteItem(object obj)
         {
+            // ИСПРАВЛЕНИЕ: Блокируем удаление званий
+            if (SelectedMenu == "Звания")
+            {
+                MessageBox.Show("Удаление воинских званий запрещено.", "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             if (obj is DirectoryItemModel item)
             {
                 if (MessageBox.Show($"Удалить '{item.Name}'?", "Внимание", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
@@ -173,7 +188,7 @@ namespace WpfApp1.ViewModels
                     }
                     catch (Exception)
                     {
-                        MessageBox.Show("Невозможно удалить этот элемент, так как он уже используется.", "Удаление запрещено", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show("Невозможно удалить этот элемент, так как он уже используется (например, назначен бойцу или наряду). Сначала снимите его со всех связанных записей.", "Удаление запрещено", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }

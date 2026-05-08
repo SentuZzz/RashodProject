@@ -17,27 +17,26 @@ namespace WpfApp1.ViewModels
         private readonly SoldierRepository _soldierRepo;
         private readonly DirectoryRepository _dirRepo;
 
-        // Исходные полные списки из БД для работы фильтров
-        private List<DirectoryItemModel> _allPositions;
-        private List<DirectoryItemModel> _allUnits;
+        private List<DirectoryItemModel> _allPositions = new List<DirectoryItemModel>();
+        private List<DirectoryItemModel> _allUnits = new List<DirectoryItemModel>();
 
-        private ObservableCollection<SoldierModel> _soldiers;
+        private ObservableCollection<SoldierModel> _soldiers = new ObservableCollection<SoldierModel>();
         public ObservableCollection<SoldierModel> Soldiers
         {
             get => _soldiers;
             set { _soldiers = value; OnPropertyChanged(); }
         }
 
-        public ObservableCollection<DirectoryItemModel> Ranks { get; set; }
+        public ObservableCollection<DirectoryItemModel> Ranks { get; set; } = new ObservableCollection<DirectoryItemModel>();
 
-        private ObservableCollection<DirectoryItemModel> _positions;
+        private ObservableCollection<DirectoryItemModel> _positions = new ObservableCollection<DirectoryItemModel>();
         public ObservableCollection<DirectoryItemModel> Positions
         {
             get => _positions;
             set { _positions = value; OnPropertyChanged(); }
         }
 
-        private ObservableCollection<DirectoryItemModel> _units;
+        private ObservableCollection<DirectoryItemModel> _units = new ObservableCollection<DirectoryItemModel>();
         public ObservableCollection<DirectoryItemModel> Units
         {
             get => _units;
@@ -58,16 +57,18 @@ namespace WpfApp1.ViewModels
         private DateTime _joinDate = DateTime.Today;
         public DateTime JoinDate { get => _joinDate; set { _joinDate = value; OnPropertyChanged(); } }
 
-        // ИСПРАВЛЕНИЕ: При смене звания запускаем перерасчет доступных должностей
         private DirectoryItemModel _selectedRank;
         public DirectoryItemModel SelectedRank
         {
             get => _selectedRank;
             set
             {
-                _selectedRank = value;
-                OnPropertyChanged();
-                ApplyBusinessRules();
+                if (_selectedRank != value)
+                {
+                    _selectedRank = value;
+                    OnPropertyChanged();
+                    ApplyBusinessRules();
+                }
             }
         }
 
@@ -78,7 +79,19 @@ namespace WpfApp1.ViewModels
         public DirectoryItemModel SelectedUnit { get => _selectedUnit; set { _selectedUnit = value; OnPropertyChanged(); } }
 
         private string _selectedServiceType;
-        public string SelectedServiceType { get => _selectedServiceType; set { _selectedServiceType = value; OnPropertyChanged(); } }
+        public string SelectedServiceType
+        {
+            get => _selectedServiceType;
+            set
+            {
+                if (_selectedServiceType != value)
+                {
+                    _selectedServiceType = value;
+                    OnPropertyChanged();
+                    ApplyBusinessRules();
+                }
+            }
+        }
 
         private string _searchQuery;
         public string SearchQuery
@@ -103,13 +116,16 @@ namespace WpfApp1.ViewModels
             get => _isBulkInsertMode;
             set
             {
-                _isBulkInsertMode = value;
-                if (value)
+                if (_isBulkInsertMode != value)
                 {
-                    IsEditing = false;
-                    ApplyBusinessRules(); // Принудительно ставим ВМП
+                    _isBulkInsertMode = value;
+                    if (value)
+                    {
+                        IsEditing = false;
+                        ApplyBusinessRules();
+                    }
+                    UpdateUIProperties();
                 }
-                UpdateUIProperties();
             }
         }
 
@@ -119,8 +135,8 @@ namespace WpfApp1.ViewModels
         public string BulkInsertText { get => _bulkInsertText; set { _bulkInsertText = value; OnPropertyChanged(); } }
 
         private int _editingSoldierId;
-        private int? _editingOriginalUnitId; // Запоминаем старое подразделение при редактировании
-        private bool _isUpdatingForm = false; // Флаг, чтобы избежать лишних срабатываний фильтра при заполнении формы
+        private int? _editingOriginalUnitId;
+        private bool _isUpdatingForm = false;
 
         public string SubmitButtonText => IsEditing ? "Сохранить изменения" : (IsBulkInsertMode ? "Добавить список" : "Добавить бойца");
         public string FormTitle => IsEditing ? "Карточка военнослужащего" : (IsBulkInsertMode ? "Массовое добавление" : "Новый военнослужащий");
@@ -161,113 +177,128 @@ namespace WpfApp1.ViewModels
 
         private void LoadData()
         {
-            Ranks = new ObservableCollection<DirectoryItemModel>(_dirRepo.GetDictionary("Ranks", "RankID", "RankName"));
+            _isUpdatingForm = true;
 
-            // Сохраняем оригинальные списки из базы для работы фильтров
-            _allPositions = _dirRepo.GetDictionary("Positions", "PositionID", "PositionName");
-            _allUnits = _dirRepo.GetDictionary("Units", "UnitID", "UnitName");
+            var ranksData = _dirRepo.GetDictionary("Ranks", "RankID", "RankName");
+            Ranks = new ObservableCollection<DirectoryItemModel>(ranksData ?? new List<DirectoryItemModel>());
+
+            _allPositions = _dirRepo.GetDictionary("Positions", "PositionID", "PositionName") ?? new List<DirectoryItemModel>();
+
+            _allUnits = _dirRepo.GetDictionary("Units", "UnitID", "UnitName") ?? new List<DirectoryItemModel>();
             _allUnits.Insert(0, new DirectoryItemModel { Id = 0, Name = "--- Не распределен ---" });
+
+            _isUpdatingForm = false;
 
             if (!IsEditing && !IsBulkInsertMode) ResetForm();
             LoadSoldiers();
         }
 
-        // ==========================================
-        // БИЗНЕС-ЛОГИКА: Матрица Званий, Должностей и ВМП
-        // ==========================================
         private void ApplyBusinessRules()
         {
-            if (_allPositions == null || _allUnits == null || _isUpdatingForm) return;
+            if (_allPositions == null || _allUnits == null || Ranks == null || _isUpdatingForm) return;
 
-            // 1. ФИЛЬТРАЦИЯ ПОДРАЗДЕЛЕНИЙ (Блокировка ВМП)
-            var currentUnitId = SelectedUnit?.Id;
-            var allowedUnits = new List<DirectoryItemModel>();
+            _isUpdatingForm = true;
 
-            if (IsBulkInsertMode)
+            try
             {
-                // Для массового добавления оставляем только ВМП
-                allowedUnits = _allUnits.Where(u => u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 || u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0).ToList();
-            }
-            else
-            {
-                foreach (var u in _allUnits)
+                // 1. ФИЛЬТРАЦИЯ ПОДРАЗДЕЛЕНИЙ (ВОЗВРАЩЕНО!)
+                var currentUnitId = SelectedUnit?.Id;
+                var allowedUnits = new List<DirectoryItemModel>();
+
+                if (IsBulkInsertMode)
                 {
-                    bool isVmp = u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 || u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0;
-
-                    // Разрешаем все подразделения КРОМЕ ВМП. 
-                    // ВМП разрешаем ТОЛЬКО если мы редактируем бойца, который уже там числится.
-                    if (!isVmp || (IsEditing && _editingOriginalUnitId == u.Id))
+                    allowedUnits = _allUnits.Where(u => u.Name != null && (u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 || u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0)).ToList();
+                }
+                else
+                {
+                    foreach (var u in _allUnits)
                     {
-                        allowedUnits.Add(u);
+                        bool isVmp = u.Name != null && (u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 || u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0);
+                        if (!isVmp || (IsEditing && _editingOriginalUnitId == u.Id))
+                        {
+                            allowedUnits.Add(u);
+                        }
                     }
                 }
-            }
 
-            Units = new ObservableCollection<DirectoryItemModel>(allowedUnits);
-            SelectedUnit = Units.FirstOrDefault(u => u.Id == currentUnitId) ?? Units.FirstOrDefault();
+                Units = new ObservableCollection<DirectoryItemModel>(allowedUnits);
+                SelectedUnit = Units.FirstOrDefault(u => u.Id == currentUnitId) ?? Units.FirstOrDefault();
 
-            // 2. ФИЛЬТРАЦИЯ ДОЛЖНОСТЕЙ В ЗАВИСИМОСТИ ОТ ЗВАНИЯ
-            if (IsBulkInsertMode)
-            {
-                // При массовом добавлении жестко фиксируем Рядового и Стрелка
-                Positions = new ObservableCollection<DirectoryItemModel>(_allPositions);
-                SelectedRank = Ranks?.FirstOrDefault(r => r.Name.Equals("Рядовой", StringComparison.OrdinalIgnoreCase));
-                SelectedPosition = Positions?.FirstOrDefault(p => p.Name.Equals("Стрелок", StringComparison.OrdinalIgnoreCase));
-                SelectedServiceType = "По призыву";
-                return; // Остальные правила не применяем
-            }
+                // 2. ФИЛЬТРАЦИЯ ЗВАНИЙ
+                var currentRankId = SelectedRank?.Id;
+                var allowedRanks = new List<DirectoryItemModel>();
 
-            var currentPosId = SelectedPosition?.Id;
-            var allowedPositions = new List<DirectoryItemModel>();
-
-            if (SelectedRank != null)
-            {
-                string rank = SelectedRank.Name.ToLower();
-                bool isOfficerOrWarrant = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор") || rank.Contains("прапорщик") || rank.Contains("старшина");
-                bool isSergeant = rank.Contains("сержант");
-
-                foreach (var pos in _allPositions)
+                foreach (var r in Ranks)
                 {
-                    string p = pos.Name.ToLower();
-                    bool isCommander = p.Contains("командир роты") || p.Contains("командир взвода") || p.Contains("заместитель командира роты") || p.Contains("старшина") || p.Contains("техник");
-                    bool isSquadLeader = p.Contains("командир отделения") || p.Contains("заместитель командира взвода");
+                    string rankName = r.Name?.ToLower() ?? "";
+                    bool isOfficerOrWarrant = rankName.Contains("лейтенант") || rankName.Contains("капитан") || rankName.Contains("майор") || rankName.Contains("прапорщик") || rankName.Contains("полковник") || rankName.Contains("генерал");
 
-                    if (isOfficerOrWarrant)
+                    if (SelectedServiceType == "По призыву" && isOfficerOrWarrant) continue;
+                    allowedRanks.Add(r);
+                }
+
+                if (!allowedRanks.Any(r => r.Id == currentRankId))
+                {
+                    SelectedRank = allowedRanks.FirstOrDefault(r => (r.Name?.Equals("Рядовой", StringComparison.OrdinalIgnoreCase) ?? false)) ?? allowedRanks.FirstOrDefault();
+                }
+
+                // 3. ФИЛЬТРАЦИЯ ДОЛЖНОСТЕЙ В ЗАВИСИМОСТИ ОТ ЗВАНИЯ
+                var currentPosId = SelectedPosition?.Id;
+                var allowedPositions = new List<DirectoryItemModel>();
+
+                if (SelectedRank != null && !string.IsNullOrEmpty(SelectedRank.Name))
+                {
+                    string rank = SelectedRank.Name.ToLower();
+                    bool isOfficerOrWarrant = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор") || rank.Contains("прапорщик") || rank.Contains("старшина") || rank.Contains("полковник") || rank.Contains("генерал");
+                    bool isSergeant = rank.Contains("сержант");
+
+                    foreach (var pos in _allPositions)
                     {
-                        if (isCommander || isSquadLeader) allowedPositions.Add(pos); // Офицеры и прапорщики - командуют
-                    }
-                    else if (isSergeant)
-                    {
-                        if (isSquadLeader && !isCommander) allowedPositions.Add(pos); // Сержанты - командуют отделениями
-                    }
-                    else // Рядовые и Ефрейторы
-                    {
-                        if (!isCommander && !isSquadLeader) allowedPositions.Add(pos); // Рядовые - только исполнители
+                        string p = pos.Name?.ToLower() ?? "";
+                        bool isCommander = p.Contains("командир роты") || p.Contains("командир взвода") || p.Contains("заместитель командира роты") || p.Contains("старшина") || p.Contains("техник");
+                        bool isSquadLeader = p.Contains("командир отделения") || p.Contains("заместитель командира взвода");
+
+                        if (isOfficerOrWarrant)
+                        {
+                            if (isCommander || isSquadLeader) allowedPositions.Add(pos);
+                        }
+                        else if (isSergeant)
+                        {
+                            if (isSquadLeader && !isCommander) allowedPositions.Add(pos);
+                        }
+                        else
+                        {
+                            if (!isCommander && !isSquadLeader) allowedPositions.Add(pos);
+                        }
                     }
                 }
+
+                if (!allowedPositions.Any()) allowedPositions = _allPositions.ToList();
+
+                Positions = new ObservableCollection<DirectoryItemModel>(allowedPositions);
+                SelectedPosition = Positions.FirstOrDefault(p => p.Id == currentPosId) ?? Positions.FirstOrDefault();
             }
-
-            // Защита от пустых списков (если названия в БД нестандартные)
-            if (!allowedPositions.Any()) allowedPositions = _allPositions.ToList();
-
-            Positions = new ObservableCollection<DirectoryItemModel>(allowedPositions);
-
-            // Пытаемся сохранить выбранную должность, если она всё еще доступна, иначе выбираем первую доступную
-            SelectedPosition = Positions.FirstOrDefault(p => p.Id == currentPosId) ?? Positions.FirstOrDefault();
+            finally
+            {
+                _isUpdatingForm = false;
+            }
         }
-        // ==========================================
-
 
         private void LoadSoldiers()
         {
-            Soldiers = new ObservableCollection<SoldierModel>(_soldierRepo.GetAllSoldiers());
-            ICollectionView view = CollectionViewSource.GetDefaultView(Soldiers);
-            view.Filter = SoldierFilterPredicate;
+            var soldiersData = _soldierRepo.GetAllSoldiers();
+            Soldiers = new ObservableCollection<SoldierModel>(soldiersData ?? new List<SoldierModel>());
+
+            if (Soldiers != null)
+            {
+                ICollectionView view = CollectionViewSource.GetDefaultView(Soldiers);
+                if (view != null) view.Filter = SoldierFilterPredicate;
+            }
         }
 
         private void FilterSoldiers()
         {
-            if (Soldiers != null) CollectionViewSource.GetDefaultView(Soldiers).Refresh();
+            if (Soldiers != null) CollectionViewSource.GetDefaultView(Soldiers)?.Refresh();
         }
 
         private bool SoldierFilterPredicate(object item)
@@ -294,17 +325,24 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteSaveSoldier(object obj)
         {
+            if (JoinDate.Date > DateTime.Today)
+            {
+                MessageBox.Show("Дата зачисления не может быть позже сегодняшнего дня!", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             int safeUnitId = SelectedUnit != null && SelectedUnit.Id > 0 ? SelectedUnit.Id : (Units?.FirstOrDefault(u => u.Id > 0)?.Id ?? 1);
 
             if (IsBulkInsertMode)
             {
                 var lines = BulkInsertText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 var newSoldiers = new List<SoldierModel>();
-                var vmpUnit = _allUnits?.FirstOrDefault(u => u.Name.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 || u.Name.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                var vmpUnit = _allUnits?.FirstOrDefault(u => (u.Name?.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0) || (u.Name?.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0));
                 int targetBulkUnitId = vmpUnit != null ? vmpUnit.Id : safeUnitId;
 
-                int targetRankId = Ranks?.FirstOrDefault(r => r.Name.Equals("Рядовой", StringComparison.OrdinalIgnoreCase))?.Id ?? SelectedRank?.Id ?? 1;
-                int targetPosId = _allPositions?.FirstOrDefault(p => p.Name.Equals("Стрелок", StringComparison.OrdinalIgnoreCase))?.Id ?? SelectedPosition?.Id ?? 1;
+                int targetRankId = Ranks?.FirstOrDefault(r => (r.Name?.Equals("Рядовой", StringComparison.OrdinalIgnoreCase) ?? false))?.Id ?? SelectedRank?.Id ?? 1;
+                int targetPosId = _allPositions?.FirstOrDefault(p => (p.Name?.Equals("Стрелок", StringComparison.OrdinalIgnoreCase) ?? false))?.Id ?? SelectedPosition?.Id ?? 1;
                 string targetServiceType = "По призыву";
 
                 foreach (var line in lines)
@@ -332,12 +370,31 @@ namespace WpfApp1.ViewModels
             }
             else
             {
+                string inputLast = LastName?.Trim().ToLower() ?? "";
+                string inputFirst = FirstName?.Trim().ToLower() ?? "";
+                string inputMiddle = MiddleName?.Trim().ToLower() ?? "";
+
+                bool isDuplicate = Soldiers.Any(s =>
+                    (s.LastName?.ToLower() ?? "") == inputLast &&
+                    (s.FirstName?.ToLower() ?? "") == inputFirst &&
+                    (s.Patronymic?.ToLower() ?? "") == inputMiddle &&
+                    s.SoldierID != _editingSoldierId);
+
+                if (isDuplicate)
+                {
+                    if (MessageBox.Show($"Военнослужащий с таким ФИО уже числится в базе.\n\nВы уверены, что хотите добавить/сохранить полного тезку?",
+                                        "Возможное дублирование", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+                    {
+                        return;
+                    }
+                }
+
                 var soldier = new SoldierModel
                 {
                     SoldierID = _editingSoldierId,
                     LastName = LastName?.Trim(),
                     FirstName = FirstName?.Trim(),
-                    Patronymic = MiddleName?.Trim(), // Тут привязка к полю формы, названному MiddleName
+                    Patronymic = MiddleName?.Trim(),
                     JoinDate = JoinDate,
                     RankID = SelectedRank.Id,
                     PositionID = SelectedPosition.Id,
@@ -358,7 +415,7 @@ namespace WpfApp1.ViewModels
         {
             if (obj is SoldierModel soldier)
             {
-                _isUpdatingForm = true; // Отключаем правила на время загрузки данных бойца
+                _isUpdatingForm = true;
 
                 IsEditing = true;
                 _editingSoldierId = soldier.SoldierID;
@@ -369,16 +426,15 @@ namespace WpfApp1.ViewModels
                 MiddleName = soldier.Patronymic;
                 JoinDate = soldier.JoinDate == DateTime.MinValue ? DateTime.Today : soldier.JoinDate;
 
-                SelectedRank = Ranks.FirstOrDefault(r => r.Id == soldier.RankID) ?? Ranks.First();
-                SelectedServiceType = ServiceTypes.Contains(soldier.ServiceType) ? soldier.ServiceType : ServiceTypes.First();
+                SelectedRank = Ranks.FirstOrDefault(r => r.Id == soldier.RankID) ?? Ranks.FirstOrDefault();
+                SelectedServiceType = ServiceTypes.Contains(soldier.ServiceType) ? soldier.ServiceType : ServiceTypes.FirstOrDefault();
 
                 _isUpdatingForm = false;
-                ApplyBusinessRules(); // Запускаем правила (отфильтруются доступные должности и подразделения)
+                ApplyBusinessRules();
 
-                // Теперь, когда списки сформированы, выбираем должность и подразделение
-                SelectedPosition = Positions.FirstOrDefault(p => p.Id == soldier.PositionID) ?? Positions.First();
-                if (soldier.UnitID.HasValue) SelectedUnit = Units.FirstOrDefault(u => u.Id == soldier.UnitID.Value) ?? Units.First();
-                else SelectedUnit = Units.First();
+                SelectedPosition = Positions.FirstOrDefault(p => p.Id == soldier.PositionID) ?? Positions.FirstOrDefault();
+                if (soldier.UnitID.HasValue) SelectedUnit = Units.FirstOrDefault(u => u.Id == soldier.UnitID.Value) ?? Units.FirstOrDefault();
+                else SelectedUnit = Units.FirstOrDefault();
 
                 IsFormOpen = true;
             }
