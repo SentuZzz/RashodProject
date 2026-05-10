@@ -90,16 +90,15 @@
                                                     <DataTrigger Binding="{Binding CurrentStatus}" Value="Командировка">
                                                         <Setter Property="Background" Value="#FFFBEB"/>
                                                     </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsOnActiveDuty}" Value="True">
+                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="В наряде">
                                                         <Setter Property="Background" Value="#F3E8FF"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
-                                        <TextBlock FontSize="11" FontWeight="Bold">
+                                        <TextBlock Text="{Binding CurrentStatus}" FontSize="11" FontWeight="Bold">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="{Binding CurrentStatus}"/>
                                                     <Setter Property="Foreground" Value="#10B981"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
@@ -111,8 +110,7 @@
                                                         <DataTrigger Binding="{Binding CurrentStatus}" Value="Командировка">
                                                             <Setter Property="Foreground" Value="#F59E0B"/>
                                                         </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsOnActiveDuty}" Value="True">
-                                                            <Setter Property="Text" Value="В наряде"/>
+                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="В наряде">
                                                             <Setter Property="Foreground" Value="#9333EA"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>

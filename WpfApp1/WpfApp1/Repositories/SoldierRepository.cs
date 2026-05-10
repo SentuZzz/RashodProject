@@ -29,10 +29,8 @@ namespace WpfApp1.Repositories
                         )";
                     connection.Execute(createStatusesTable);
 
-                    // ИСПРАВЛЕНИЕ: Пытаемся добавить колонку Patronymic (а не MiddleName)
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN Patronymic TEXT"); } catch { }
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN IsDismissed INTEGER DEFAULT 0"); } catch { }
-                    // Пытаемся добавить JoinDate, если вдруг его не было в изначальной схеме (хотя в DataSeeder он есть)
                     try { connection.Execute("ALTER TABLE Soldiers ADD COLUMN JoinDate DATETIME DEFAULT CURRENT_DATE"); } catch { }
                 }
                 _isDbInitialized = true;
@@ -51,43 +49,49 @@ namespace WpfApp1.Repositories
                     LEFT JOIN Units u ON s.UnitID = u.UnitID
                     WHERE 1=1 ";
 
-                if (!includeDismissed)
-                {
-                    sql += " AND s.IsDismissed = 0 ";
-                }
+                if (!includeDismissed) sql += " AND s.IsDismissed = 0 ";
 
                 var soldiers = connection.Query<SoldierModel>(sql).ToList();
 
+                // 1. БАЗОВЫЕ СТАТУСЫ (Госпиталь, Отпуск)
                 string todayStr = DateTime.Today.ToString("yyyy-MM-dd");
-                string statusSql = @"
-                    SELECT SoldierID, StatusType 
-                    FROM SoldierStatuses 
-                    WHERE date(StartDate) <= date(@Today) AND date(EndDate) >= date(@Today)";
-
+                string statusSql = @"SELECT SoldierID, StatusType FROM SoldierStatuses 
+                                     WHERE date(StartDate) <= date(@Today) AND date(EndDate) >= date(@Today)";
                 var activeStatuses = connection.Query(statusSql, new { Today = todayStr }).ToList();
+
+                // 2. РЕАЛЬНОЕ ВРЕМЯ: КТО В НАРЯДЕ ПРЯМО СЕЙЧАС (Правило 16:00 - 16:00)
+                DateTime now = DateTime.Now;
+                DateTime currentShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+
+                string currentDutySql = @"SELECT SoldierID FROM DutyHistory WHERE date(DutyDate) = date(@CurrentShift)";
+                var currentlyOnDutyIds = connection.Query<int>(currentDutySql, new { CurrentShift = currentShiftDate }).ToHashSet();
 
                 foreach (var s in soldiers)
                 {
                     var activeStatus = activeStatuses.FirstOrDefault(st => (int)st.SoldierID == s.SoldierID);
                     s.CurrentStatus = activeStatus != null ? (string)activeStatus.StatusType : "В строю";
 
-                    // Если JoinDate пустая (например, старые записи), ставим дефолтную
+                    // ЖЕЛЕЗОБЕТОННО: Если боец назначен на активную смену, его статус переписывается на "В наряде"
+                    if (s.CurrentStatus == "В строю" && currentlyOnDutyIds.Contains(s.SoldierID))
+                    {
+                        s.CurrentStatus = "В наряде";
+                    }
+
                     if (s.JoinDate == DateTime.MinValue) s.JoinDate = DateTime.Today;
                 }
 
+                // 3. ПЛАНИРОВАНИЕ: Кто будет занят в выбранную дату (для фиолетовой подсветки в календаре)
                 if (dutyDate.HasValue)
                 {
-                    string dutySql = @"
-                        SELECT ta.SoldierID 
-                        FROM TaskAssignments ta
-                        JOIN TaskHistory th ON ta.TaskHistoryID = th.TaskHistoryID
-                        JOIN Duties d ON th.CategoryID = d.DutyID
-                        WHERE date(th.CreationDate) = date(@DutyDate)";
+                    string plannedDutySql = @"SELECT SoldierID FROM DutyHistory WHERE date(DutyDate) = date(@DutyDate)";
+                    var plannedDutyIds = connection.Query<int>(plannedDutySql, new { DutyDate = dutyDate.Value }).ToHashSet();
 
-                    var busyIds = connection.Query<int>(dutySql, new { DutyDate = dutyDate.Value }).ToHashSet();
                     foreach (var s in soldiers)
                     {
-                        if (busyIds.Contains(s.SoldierID)) s.IsOnActiveDuty = true;
+                        if (plannedDutyIds.Contains(s.SoldierID))
+                        {
+                            s.IsOnActiveDuty = true;
+                        }
                     }
                 }
 
@@ -101,7 +105,6 @@ namespace WpfApp1.Repositories
             {
                 if (soldier.JoinDate == DateTime.MinValue) soldier.JoinDate = DateTime.Today;
 
-                // ИСПРАВЛЕНИЕ: Используем Patronymic вместо MiddleName
                 string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, Patronymic, ServiceType, JoinDate) 
                                VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @Patronymic, @ServiceType, @JoinDate)";
                 connection.Execute(sql, soldier);
@@ -115,7 +118,6 @@ namespace WpfApp1.Repositories
                 connection.Open();
                 using (var transaction = connection.BeginTransaction())
                 {
-                    // ИСПРАВЛЕНИЕ: Используем Patronymic вместо MiddleName
                     string sql = @"INSERT INTO Soldiers (RankID, PositionID, UnitID, FirstName, LastName, Patronymic, ServiceType, JoinDate) 
                                    VALUES (@RankID, @PositionID, @UnitID, @FirstName, @LastName, @Patronymic, @ServiceType, @JoinDate)";
 
@@ -124,7 +126,6 @@ namespace WpfApp1.Repositories
                         if (soldier.JoinDate == DateTime.MinValue) soldier.JoinDate = DateTime.Today;
                         connection.Execute(sql, soldier, transaction);
                     }
-
                     transaction.Commit();
                 }
             }
@@ -134,15 +135,9 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // ИСПРАВЛЕНИЕ: Устанавливаем Patronymic = @Patronymic
                 string sql = @"UPDATE Soldiers 
-                               SET RankID = @RankID, 
-                                   PositionID = @PositionID, 
-                                   UnitID = @UnitID, 
-                                   FirstName = @FirstName, 
-                                   LastName = @LastName, 
-                                   Patronymic = @Patronymic, 
-                                   ServiceType = @ServiceType 
+                               SET RankID = @RankID, PositionID = @PositionID, UnitID = @UnitID, 
+                                   FirstName = @FirstName, LastName = @LastName, Patronymic = @Patronymic, ServiceType = @ServiceType 
                                WHERE SoldierID = @SoldierID";
                 connection.Execute(sql, soldier);
             }

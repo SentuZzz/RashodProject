@@ -104,7 +104,7 @@
                         <DataGridTextColumn Header="Должность" Binding="{Binding PositionName}" Width="150" MinWidth="130"/>
                         <DataGridTextColumn Header="Подразделение" Binding="{Binding UnitName}" Width="120" MinWidth="120"/>
 
-                        <DataGridTemplateColumn Header="Статус" Width="100" MinWidth="100">
+                        <DataGridTemplateColumn Header="Статус" Width="Auto" MinWidth="100" SortMemberPath="CurrentStatus">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Border CornerRadius="4" Padding="5,2" HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -112,9 +112,6 @@
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="#ECFDF5"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="В строю">
-                                                        <Setter Property="Background" Value="#ECFDF5"/>
-                                                    </DataTrigger>
                                                     <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
                                                         <Setter Property="Background" Value="#EFF6FF"/>
                                                     </DataTrigger>
@@ -124,6 +121,9 @@
                                                     <DataTrigger Binding="{Binding CurrentStatus}" Value="Командировка">
                                                         <Setter Property="Background" Value="#FFFBEB"/>
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="В наряде">
+                                                        <Setter Property="Background" Value="#F3E8FF"/>
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
@@ -132,9 +132,6 @@
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="#10B981"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="В строю">
-                                                            <Setter Property="Foreground" Value="#10B981"/>
-                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
                                                             <Setter Property="Foreground" Value="#3B82F6"/>
                                                         </DataTrigger>
@@ -143,6 +140,9 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding CurrentStatus}" Value="Командировка">
                                                             <Setter Property="Foreground" Value="#F59E0B"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="В наряде">
+                                                            <Setter Property="Foreground" Value="#9333EA"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>

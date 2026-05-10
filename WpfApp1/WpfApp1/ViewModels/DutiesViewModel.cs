@@ -12,7 +12,7 @@ namespace WpfApp1.ViewModels
 {
     public class DutiesViewModel : ViewModelBase
     {
-        public DateTime MinAllowedDate => DateTime.Today; // ИСПРАВЛЕНИЕ: Теперь минимальная дата - сегодня
+        public DateTime MinAllowedDate => DateTime.Today;
 
         private Dictionary<DateTime, string> _busyDatesInfo = new Dictionary<DateTime, string>();
         public Dictionary<DateTime, string> BusyDatesInfo
@@ -45,7 +45,7 @@ namespace WpfApp1.ViewModels
             set { _dailyDutiesStatus = value; OnPropertyChanged(); }
         }
 
-        private DateTime _customAssignDate = DateTime.Today;
+        private DateTime _customAssignDate;
         public DateTime CustomAssignDate
         {
             get { return _customAssignDate; }
@@ -108,12 +108,17 @@ namespace WpfApp1.ViewModels
 
             AssignDutyCommand = new ViewModelCommand(ExecuteAssignDuty, CanExecuteAssignDuty);
 
-            // Инициализируем SelectedDate без вызова сеттера, чтобы избежать двойной загрузки
-            _selectedDate = DateTime.Today;
-            CustomAssignDate = DateTime.Today;
+            // ИСПРАВЛЕНИЕ: Синхронизируем стартовую дату со временем смены (как на Главной странице)
+            DateTime now = DateTime.Now;
+            DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+            DateTime planningDate = activeShiftDate.AddDays(1); // Мы всегда планируем следующую смену
+
+            // Инициализируем без вызова сеттера, чтобы избежать двойной загрузки при старте
+            _selectedDate = planningDate;
+            _customAssignDate = planningDate;
 
             UpdateDailyStatus();
-            LoadSoldiers(); // Заменили дублирующийся LoadData() на LoadSoldiers()
+            LoadSoldiers();
 
             AppMessenger.DirectoriesUpdated += () =>
             {
@@ -126,12 +131,15 @@ namespace WpfApp1.ViewModels
         private void LoadSoldiers()
         {
             bool includeDismissed = SelectedDate.Date < DateTime.Today;
+            // Передаем выбранную дату в репозиторий. Репозиторий сам подставит статус "В наряде", 
+            // если боец назначен на SelectedDate.
             var allSoldiers = _repository.GetAllSoldiers(SelectedDate, includeDismissed);
 
+            // Фильтр "Скрыть недоступных"
             if (HideUnavailable)
             {
                 allSoldiers = allSoldiers.Where(s =>
-                    s.CurrentStatus == "В строю" &&
+                    s.CurrentStatus == "В строю" && // Теперь это жестко исключает тех, кто "В наряде"
                     !s.IsOnActiveDuty &&
                     (s.UnitName == null ||
                     (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -141,6 +149,7 @@ namespace WpfApp1.ViewModels
             }
             else
             {
+                // Показываем всех, кроме ВМП
                 allSoldiers = allSoldiers.Where(s =>
                     s.UnitName == null ||
                     (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -167,6 +176,7 @@ namespace WpfApp1.ViewModels
                          SelectedSoldier.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0 ||
                          SelectedSoldier.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0);
 
+            // Кнопка блокируется, если статус не "В строю" (т.е. если боец в наряде, госпитале и т.д.)
             return SelectedSoldier.CurrentStatus == "В строю" && !SelectedSoldier.IsOnActiveDuty && !isVmp;
         }
 
@@ -174,7 +184,6 @@ namespace WpfApp1.ViewModels
         {
             DateTime targetDate = IsCustomDateVisible ? CustomAssignDate : SelectedDate;
 
-            // ИСПРАВЛЕНИЕ: Строгая проверка на прошлое (раньше пропускало -1 день)
             if (targetDate.Date < DateTime.Today)
             {
                 MessageBox.Show("Нельзя назначить наряд в прошлое!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -242,88 +251,69 @@ namespace WpfApp1.ViewModels
             bool isConscript = _selectedSoldier.ServiceType == "По призыву";
             bool isContractor = _selectedSoldier.ServiceType == "По контракту";
 
-            // Группировка званий
             bool isSoldier = rank == "рядовой" || rank == "ефрейтор";
             bool isSergeant = rank.Contains("сержант") || (rank.Contains("старшина") && !rank.Contains("прапорщик"));
             bool isWarrant = rank.Contains("прапорщик");
             bool isOfficer = rank.Contains("лейтенант") || rank.Contains("капитан") || rank.Contains("майор");
 
-            // Группировка должностей
             bool isSoldierPos = pos.Contains("стрелок") || pos.Contains("пулеметчик") || pos.Contains("гранатометчик") || pos.Contains("наводчик") || pos.Contains("водитель");
 
             foreach (var duty in _allDuties)
             {
                 string dutyName = duty.DutyName.ToLower();
 
-                // 1. Дежурный по роте
                 if (dutyName.Contains("дежурный по роте"))
                 {
-                    // Сержанты, либо солдаты-контрактники (как исключение)
                     if (isSergeant || (isSoldier && isContractor)) AvailableDuties.Add(duty);
                 }
-                // 2. Помощник дежурного по роте
                 else if (dutyName.Contains("помощник дежурного по роте"))
                 {
                     if (isSoldier || isSergeant) AvailableDuties.Add(duty);
                 }
-                // 3. Дневальный по роте
                 else if (dutyName.Contains("дневальный по роте"))
                 {
-                    // Солдаты, ИЛИ сержанты-срочники на солдатских должностях
                     if (isSoldier || (isSergeant && isConscript && isSoldierPos)) AvailableDuties.Add(duty);
                 }
-                // 4. Начальник караула
                 else if (dutyName.Contains("начальник караула"))
                 {
                     if (isOfficer || isWarrant || (isSergeant && isContractor)) AvailableDuties.Add(duty);
                 }
-                // 5. Караульный
                 else if (dutyName.Contains("караульный") && !dutyName.Contains("начальник"))
                 {
-                    // Солдаты, ИЛИ сержанты на солдатских должностях
                     if (isSoldier || (isSergeant && isSoldierPos)) AvailableDuties.Add(duty);
                 }
-                // 6. Группа Антитеррора (Исполнители)
                 else if (dutyName.Contains("антитеррор") && !dutyName.Contains("командир"))
                 {
                     if (isSoldier || isSergeant) AvailableDuties.Add(duty);
                 }
-                // 7. Командир подразд. Антитеррора
                 else if (dutyName.Contains("антитеррор") && dutyName.Contains("командир"))
                 {
                     if (isOfficer || isWarrant || isSergeant) AvailableDuties.Add(duty);
                 }
-                // 8. Начальник патруля
                 else if (dutyName.Contains("начальник патруля"))
                 {
                     if (isSergeant) AvailableDuties.Add(duty);
                 }
-                // 9. Патрульный
                 else if (dutyName.Contains("патрульный") && !dutyName.Contains("начальник"))
                 {
                     if (isSoldier || isSergeant) AvailableDuties.Add(duty);
                 }
-                // 10. Дежурный по парку
                 else if (dutyName.Contains("дежурный по парку"))
                 {
                     if (isOfficer || isWarrant || isSergeant) AvailableDuties.Add(duty);
                 }
-                // 11. Дневальный по парку
                 else if (dutyName.Contains("дневальный по парку"))
                 {
                     if (isSoldier || (isSergeant && isConscript)) AvailableDuties.Add(duty);
                 }
-                // 12. Дежурный по КПП
                 else if (dutyName.Contains("дежурный по кпп"))
                 {
                     if (isSergeant || isWarrant) AvailableDuties.Add(duty);
                 }
-                // 13. Дневальный по КПП
                 else if (dutyName.Contains("дневальный по кпп"))
                 {
                     if (isSoldier) AvailableDuties.Add(duty);
                 }
-                // Неучтенные наряды (распределяем по приоритету БД)
                 else
                 {
                     if (isOfficer || isWarrant) { if (duty.RolePriority <= 1) AvailableDuties.Add(duty); }

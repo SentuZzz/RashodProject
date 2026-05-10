@@ -104,7 +104,6 @@ namespace WpfApp1.ViewModels
             set { _onDutyCount = value; OnPropertyChanged(); }
         }
 
-        // --- НОВЫЕ СВОЙСТВА ДЛЯ ВМП (КМБ) ---
         private int _vmpCount;
         public int VmpCount
         {
@@ -120,7 +119,6 @@ namespace WpfApp1.ViewModels
 
         public Visibility IsVmpVisible => VmpCount > 0 ? Visibility.Visible : Visibility.Collapsed;
         public int GridColumnsCount => VmpCount > 0 ? 5 : 4;
-        // ------------------------------------
 
         private ObservableCollection<DashboardDutyModel> _tomorrowDuties;
         public ObservableCollection<DashboardDutyModel> TomorrowDuties
@@ -141,7 +139,7 @@ namespace WpfApp1.ViewModels
             LoadStatistics();
 
             AppMessenger.DirectoriesUpdated += () => LoadStatistics();
-            AppMessenger.DutiesUpdated += () => LoadStatistics(); // Для обновления чеклиста нарядов
+            AppMessenger.DutiesUpdated += () => LoadStatistics();
         }
 
         private void StartClock()
@@ -160,32 +158,28 @@ namespace WpfApp1.ViewModels
 
         private void LoadStatistics()
         {
-            var soldiers = _soldierRepository.GetAllSoldiers(); // Уже без дембелей
+            // Нам больше не нужно передавать дату, репозиторий сам знает, сколько сейчас времени!
+            var soldiers = _soldierRepository.GetAllSoldiers();
+
             TotalCount = soldiers.Count;
 
-            // 1. В наряде
-            OnDutyCount = soldiers.Count(s => s.IsOnActiveDuty);
-
-            // 2. Отсутствуют (Госпиталь, Отпуск и т.д.)
-            AbsentCount = soldiers.Count(s => s.CurrentStatus != "В строю");
-
-            // 3. ВМП (Свободны, но числятся во взводе пополнения)
-            // Ищем ключевые слова "ВМП", "пополнения" или "КМБ" в названии подразделения
-            VmpCount = soldiers.Count(s => s.CurrentStatus == "В строю" && !s.IsOnActiveDuty && s.UnitName != null &&
+            // Считаем строго по тексту статуса, который выдала база
+            OnDutyCount = soldiers.Count(s => s.CurrentStatus == "В наряде");
+            AbsentCount = soldiers.Count(s => s.CurrentStatus != "В строю" && s.CurrentStatus != "В наряде");
+            VmpCount = soldiers.Count(s => s.CurrentStatus == "В строю" && s.UnitName != null &&
                                           (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                            s.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                            s.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0));
 
-            // 4. В строю (Боевые штыки: Всего - Наряд - Отсутствуют - ВМП)
             InFormationCount = TotalCount - OnDutyCount - AbsentCount - VmpCount;
 
-            TomorrowDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetTomorrowDutiesStatus());
-            UpcomingEvents = new ObservableCollection<NotificationModel>(_statusRepository.GetUpcomingNotifications(3));
-
+            // Загрузка списков
             DateTime now = DateTime.Now;
             DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
             DateTime planningDate = activeShiftDate.AddDays(1);
 
+            TomorrowDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetTomorrowDutiesStatus());
+            UpcomingEvents = new ObservableCollection<NotificationModel>(_statusRepository.GetUpcomingNotifications(3));
             ActiveDutyCards = new ObservableCollection<ActiveDutyCardModel>(_dutyRepository.GetActiveDutiesForDate(activeShiftDate));
             PlanningDuties = new ObservableCollection<DashboardDutyModel>(_dutyRepository.GetDutiesStatusForDate(planningDate));
         }

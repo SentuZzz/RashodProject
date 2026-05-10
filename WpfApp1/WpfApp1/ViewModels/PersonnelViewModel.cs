@@ -300,7 +300,12 @@ namespace WpfApp1.ViewModels
 
         private void LoadSoldiers()
         {
-            var soldiersData = _soldierRepo.GetAllSoldiers();
+            // Рассчитываем актуальную дату смены нарядов
+            DateTime now = DateTime.Now;
+            DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
+
+            // Передаем ее в базу данных
+            var soldiersData = _soldierRepo.GetAllSoldiers(activeShiftDate);
             Soldiers = new ObservableCollection<SoldierModel>(soldiersData ?? new List<SoldierModel>());
 
             if (Soldiers != null)
