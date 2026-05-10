@@ -59,7 +59,15 @@ namespace WpfApp1.Repositories
                                      WHERE date(StartDate) <= date(@Today) AND date(EndDate) >= date(@Today)";
                 var activeStatuses = connection.Query(statusSql, new { Today = todayStr }).ToList();
 
-                // 2. РЕАЛЬНОЕ ВРЕМЯ: КТО В НАРЯДЕ ПРЯМО СЕЙЧАС (Правило 16:00 - 16:00)
+                // 2. АКТИВНЫЕ ЗАДАЧИ: Кто прямо сейчас выполняет задачу
+                string activeTasksSql = @"
+                    SELECT ta.SoldierID 
+                    FROM TaskAssignments ta
+                    JOIN TaskHistory th ON ta.TaskHistoryID = th.TaskHistoryID
+                    WHERE th.Status = 'В процессе'";
+                var onTaskIds = connection.Query<int>(activeTasksSql).ToHashSet();
+
+                // 3. РЕАЛЬНОЕ ВРЕМЯ НАРЯДОВ (Правило 16:00 - 16:00)
                 DateTime now = DateTime.Now;
                 DateTime currentShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
 
@@ -68,11 +76,18 @@ namespace WpfApp1.Repositories
 
                 foreach (var s in soldiers)
                 {
+                    // Назначаем базовый статус
                     var activeStatus = activeStatuses.FirstOrDefault(st => (int)st.SoldierID == s.SoldierID);
                     s.CurrentStatus = activeStatus != null ? (string)activeStatus.StatusType : "В строю";
 
-                    // ЖЕЛЕЗОБЕТОННО: Если боец назначен на активную смену, его статус переписывается на "В наряде"
-                    if (s.CurrentStatus == "В строю" && currentlyOnDutyIds.Contains(s.SoldierID))
+                    // Перекрываем статусом задачи
+                    if (s.CurrentStatus == "В строю" && onTaskIds.Contains(s.SoldierID))
+                    {
+                        s.CurrentStatus = "На задаче";
+                    }
+
+                    // Перекрываем статусом наряда (Наивысший приоритет)
+                    if ((s.CurrentStatus == "В строю" || s.CurrentStatus == "На задаче") && currentlyOnDutyIds.Contains(s.SoldierID))
                     {
                         s.CurrentStatus = "В наряде";
                     }
@@ -80,7 +95,7 @@ namespace WpfApp1.Repositories
                     if (s.JoinDate == DateTime.MinValue) s.JoinDate = DateTime.Today;
                 }
 
-                // 3. ПЛАНИРОВАНИЕ: Кто будет занят в выбранную дату (для фиолетовой подсветки в календаре)
+                // 4. ПЛАНИРОВАНИЕ (Для календаря)
                 if (dutyDate.HasValue)
                 {
                     string plannedDutySql = @"SELECT SoldierID FROM DutyHistory WHERE date(DutyDate) = date(@DutyDate)";
@@ -88,10 +103,7 @@ namespace WpfApp1.Repositories
 
                     foreach (var s in soldiers)
                     {
-                        if (plannedDutyIds.Contains(s.SoldierID))
-                        {
-                            s.IsOnActiveDuty = true;
-                        }
+                        if (plannedDutyIds.Contains(s.SoldierID)) s.IsOnActiveDuty = true;
                     }
                 }
 

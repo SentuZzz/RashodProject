@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using Microsoft.Win32; // Добавлено для диалогового окна сохранения
+using Microsoft.Win32;
 using ClosedXML.Excel;
 using WpfApp1.Models;
 using WpfApp1.Repositories;
@@ -41,9 +41,9 @@ namespace WpfApp1.ViewModels
         {
             try
             {
-                var soldiers = _soldierRepo.GetAllSoldiers(DateTime.Today);
+                // Вызываем без параметров, чтобы получить кристально чистую текущую картину на данный момент
+                var soldiers = _soldierRepo.GetAllSoldiers();
 
-                // Вызов окна сохранения файла
                 var saveFileDialog = new SaveFileDialog
                 {
                     FileName = $"Строевая_записка_{DateTime.Today:dd_MM_yyyy}.xlsx",
@@ -61,7 +61,7 @@ namespace WpfApp1.ViewModels
                         var ws = workbook.Worksheets.Add("Личный состав");
 
                         // Заголовок
-                        ws.Cell(1, 1).Value = $"СТРОЕВАЯ ЗАПИСКА (по состоянию на {DateTime.Today:dd.MM.yyyy})";
+                        ws.Cell(1, 1).Value = $"СТРОЕВАЯ ЗАПИСКА (по состоянию на {DateTime.Now:dd.MM.yyyy HH:mm})";
                         ws.Range("A1:F1").Merge().Style.Font.SetBold().Font.FontSize = 14;
                         ws.Cell(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
@@ -88,14 +88,21 @@ namespace WpfApp1.ViewModels
                             ws.Cell(row, 4).Value = s.UnitName ?? "Не распределен";
                             ws.Cell(row, 5).Value = s.PositionName;
 
-                            string status = s.IsOnActiveDuty ? "В наряде" : s.CurrentStatus;
+                            // Теперь берем чистый статус прямо из нашей "умной" базы данных
+                            string status = s.CurrentStatus;
                             ws.Cell(row, 6).Value = status;
 
-                            // Красим "Отсутствующих" в красный, "В наряде" в синий
+                            // Раскрашиваем статусы в цвета, соответствующие дизайну программы
                             if (status != "В строю")
                             {
-                                ws.Cell(row, 6).Style.Font.FontColor = status == "В наряде" ? XLColor.DarkBlue : XLColor.DarkRed;
                                 ws.Cell(row, 6).Style.Font.SetBold();
+
+                                if (status == "В наряде")
+                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkViolet; // Фиолетовый
+                                else if (status == "На задаче")
+                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkOrange; // Оранжевый
+                                else
+                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkRed;    // Красный (Госпиталь, Отпуск)
                             }
 
                             // Сетка
@@ -109,7 +116,6 @@ namespace WpfApp1.ViewModels
                         workbook.SaveAs(filePath);
                     }
 
-                    // Открываем созданный файл
                     Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
                 }
             }
@@ -131,7 +137,6 @@ namespace WpfApp1.ViewModels
                     return;
                 }
 
-                // Вызов окна сохранения файла
                 var saveFileDialog = new SaveFileDialog
                 {
                     FileName = $"Книга_нарядов_{SelectedDate:dd_MM_yyyy}.xlsx",
@@ -156,13 +161,11 @@ namespace WpfApp1.ViewModels
 
                         foreach (var dutyGroup in activeDuties)
                         {
-                            // Заголовок группы
                             ws.Cell(row, 1).Value = $"МЕСТО НЕСЕНИЯ СЛУЖБЫ: {dutyGroup.GroupName.ToUpper()}";
                             ws.Range(row, 1, row, 4).Merge().Style.Font.SetBold().Fill.BackgroundColor = XLColor.LightSteelBlue;
                             ws.Range(row, 1, row, 4).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
                             row++;
 
-                            // Шапка таблицы наряда
                             string[] headers = { "Роль / Наряд", "Звание и ФИО", "Подпись о заступлении", "Примечание" };
                             for (int i = 0; i < headers.Length; i++)
                             {
@@ -173,7 +176,6 @@ namespace WpfApp1.ViewModels
                             }
                             row++;
 
-                            // Список людей
                             foreach (var role in dutyGroup.PersonnelRoles)
                             {
                                 ws.Cell(row, 1).Value = role.RoleName;

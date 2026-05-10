@@ -139,7 +139,7 @@ namespace WpfApp1.ViewModels
             if (HideUnavailable)
             {
                 allSoldiers = allSoldiers.Where(s =>
-                    s.CurrentStatus == "В строю" && // Теперь это жестко исключает тех, кто "В наряде"
+                    (s.CurrentStatus == "В строю" || s.CurrentStatus == "На задаче") &&
                     !s.IsOnActiveDuty &&
                     (s.UnitName == null ||
                     (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -177,7 +177,7 @@ namespace WpfApp1.ViewModels
                          SelectedSoldier.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0);
 
             // Кнопка блокируется, если статус не "В строю" (т.е. если боец в наряде, госпитале и т.д.)
-            return SelectedSoldier.CurrentStatus == "В строю" && !SelectedSoldier.IsOnActiveDuty && !isVmp;
+            return (SelectedSoldier.CurrentStatus == "В строю" || SelectedSoldier.CurrentStatus == "На задаче") && !SelectedSoldier.IsOnActiveDuty && !isVmp;
         }
 
         private void ExecuteAssignDuty(object obj)

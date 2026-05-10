@@ -18,22 +18,20 @@ namespace WpfApp1.ViewModels
         private bool _isSelected;
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
 
-        private bool _isGoingOnDuty;
-        public bool IsGoingOnDuty
+        // Новое свойство: Предупреждение (Желтый цвет)
+        private bool _isWarning;
+        public bool IsWarning
         {
-            get => _isGoingOnDuty;
-            set
-            {
-                _isGoingOnDuty = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(StatusIcon));
-                OnPropertyChanged(nameof(StatusColor));
-                OnPropertyChanged(nameof(TooltipText));
-            }
+            get => _isWarning;
+            set { _isWarning = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusIcon)); OnPropertyChanged(nameof(StatusColor)); OnPropertyChanged(nameof(TooltipText)); }
         }
 
         private bool _isEnabled = true;
-        public bool IsEnabled { get => _isEnabled; set { _isEnabled = value; OnPropertyChanged(); } }
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set { _isEnabled = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusIcon)); OnPropertyChanged(nameof(StatusColor)); OnPropertyChanged(nameof(TooltipText)); }
+        }
 
         private string _conflictReason = "";
         public string ConflictReason
@@ -42,9 +40,9 @@ namespace WpfApp1.ViewModels
             set { _conflictReason = value; OnPropertyChanged(nameof(TooltipText)); }
         }
 
-        public string StatusIcon => IsGoingOnDuty ? "ShieldHalved" : "CheckCircle";
-        public string StatusColor => IsGoingOnDuty ? "#F59E0B" : "#10B981";
-        public string TooltipText => IsGoingOnDuty ? $"Занят: {ConflictReason}" : "Свободен для задач";
+        public string StatusIcon => !IsEnabled ? "Ban" : (IsWarning ? "Clock" : "CheckCircle");
+        public string StatusColor => !IsEnabled ? "#EF4444" : (IsWarning ? "#F59E0B" : "#10B981");
+        public string TooltipText => !IsEnabled ? $"Недоступен: {ConflictReason}" : (IsWarning ? $"Внимание: {ConflictReason}" : "Свободен для задач");
     }
 
     public class TasksViewModel : ViewModelBase
@@ -81,7 +79,7 @@ namespace WpfApp1.ViewModels
         public DateTime NewTaskStartDate { get => _newTaskStartDate; set { _newTaskStartDate = value; OnPropertyChanged(); ValidateSoldiersByDeadline(); } }
 
         private string _newTaskStartTime = "09:00";
-        public string NewTaskStartTime { get => _newTaskStartTime; set { _newTaskStartTime = value; OnPropertyChanged(); } }
+        public string NewTaskStartTime { get => _newTaskStartTime; set { _newTaskStartTime = value; OnPropertyChanged(); ValidateSoldiersByDeadline(); } }
 
         private DateTime? _newTaskDeadline;
         public DateTime? NewTaskDeadline { get => _newTaskDeadline; set { _newTaskDeadline = value; OnPropertyChanged(); ValidateSoldiersByDeadline(); } }
@@ -132,8 +130,9 @@ namespace WpfApp1.ViewModels
 
         private void LoadAvailableSoldiers()
         {
+            // Берем "В строю" и "На задаче" (чтобы при редактировании уже занятые бойцы не пропадали из списка)
             var inFormation = _soldierRepo.GetAllSoldiers().Where(s =>
-                s.CurrentStatus == "В строю" &&
+                (s.CurrentStatus == "В строю" || s.CurrentStatus == "На задаче") &&
                 !s.IsOnActiveDuty &&
                 (s.UnitName == null ||
                 (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -168,57 +167,56 @@ namespace WpfApp1.ViewModels
         {
             if (AvailableConscripts == null || AvailableContractors == null) return;
 
-            DateTime startDate = NewTaskStartDate.Date;
-            DateTime endDate = NewTaskDeadline.HasValue ? NewTaskDeadline.Value.Date : startDate;
-
-            bool isLate = false;
             string[] timeFormats = { @"h\:mm", @"hh\:mm" };
+            TimeSpan startTime = TimeSpan.Zero;
+            TimeSpan deadlineTime = TimeSpan.Zero;
 
-            if (NewTaskDeadline.HasValue)
-            {
-                if (TimeSpan.TryParseExact(NewTaskDeadlineTime, timeFormats, null, out TimeSpan parsedTime))
-                {
-                    isLate = parsedTime.Hours >= 15;
-                }
-            }
+            TimeSpan.TryParseExact(NewTaskStartTime, timeFormats, null, out startTime);
+            if (NewTaskDeadline.HasValue) TimeSpan.TryParseExact(NewTaskDeadlineTime, timeFormats, null, out deadlineTime);
+
+            DateTime taskStart = NewTaskStartDate.Date + startTime;
+            DateTime taskEnd = (NewTaskDeadline ?? NewTaskStartDate).Date + (NewTaskDeadline.HasValue ? deadlineTime : startTime);
 
             Action<TaskSoldierSelectionModel> validate = s => {
-                if (s.Soldier.SoldierID == 0) return; // Пропускаем заглушку "Не назначать"
+                if (s.Soldier.SoldierID == 0) return;
 
-                bool hasConflict = false;
+                bool isBlocked = false;
+                bool isWarning = false;
                 string reason = "";
 
-                // Проверяем каждый день задачи на пересечение с занятостью бойца
-                for (DateTime d = startDate; d <= endDate; d = d.AddDays(1))
+                // Проверяем каждый день задачи
+                for (DateTime d = taskStart.Date; d <= taskEnd.Date; d = d.AddDays(1))
                 {
+                    // 1. Был в наряде ВЧЕРА (сменяется сегодня в 16:00, потом отдыхает)
+                    if (s.BusyDates.ContainsKey(d.AddDays(-1)))
+                    {
+                        isBlocked = true;
+                        reason = "Сменяется / Отсыпной";
+                        break;
+                    }
+
+                    // 2. Заступает в наряд СЕГОДНЯ (в 16:00)
                     if (s.BusyDates.ContainsKey(d))
                     {
-                        // Исключение: Если конфликт - это наряд в ПОСЛЕДНИЙ день задачи, 
-                        // и задача заканчивается до 15:00, то боец успеет её выполнить.
-                        if (d == endDate && s.BusyDates[d].Contains("Наряд") && !isLate)
+                        // Если задача заканчивается сегодня до 15:00 - можно, но осторожно
+                        if (taskEnd <= d.AddHours(15))
                         {
-                            continue;
+                            isWarning = true;
+                            reason = "Заступает в 16:00 (успеет)";
                         }
-
-                        hasConflict = true;
-                        reason = s.BusyDates[d];
-                        break;
+                        else
+                        {
+                            isBlocked = true;
+                            reason = "Наряд с 16:00";
+                            break;
+                        }
                     }
                 }
 
-                if (hasConflict)
-                {
-                    s.IsEnabled = false;
-                    s.IsSelected = false;
-                    s.ConflictReason = reason;
-                    s.IsGoingOnDuty = true;
-                }
-                else
-                {
-                    s.IsEnabled = true;
-                    s.ConflictReason = "";
-                    s.IsGoingOnDuty = false;
-                }
+                s.IsEnabled = !isBlocked;
+                if (isBlocked) s.IsSelected = false;
+                s.IsWarning = isWarning && !isBlocked;
+                s.ConflictReason = reason;
             };
 
             foreach (var s in AvailableConscripts) validate(s);
@@ -235,7 +233,7 @@ namespace WpfApp1.ViewModels
 
             if (!TimeSpan.TryParseExact(NewTaskStartTime, timeFormats, null, out TimeSpan startTime))
             {
-                MessageBox.Show("Некорректный формат времени начала! Используйте формат ЧЧ:ММ (например, 09:00).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Некорректный формат времени начала! Используйте формат ЧЧ:ММ (например, 09:00).", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -244,7 +242,7 @@ namespace WpfApp1.ViewModels
             {
                 if (!TimeSpan.TryParseExact(NewTaskDeadlineTime, timeFormats, null, out TimeSpan dt))
                 {
-                    MessageBox.Show("Некорректный формат времени дедлайна! Используйте формат ЧЧ:ММ (например, 18:00).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show("Некорректный формат времени дедлайна!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
                 deadlineTime = dt;
@@ -318,14 +316,11 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteDeleteTask(object obj)
         {
-            if (obj is int taskId)
+            if (obj is int taskId && MessageBox.Show("Удалить задачу?", "Удаление", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
-                if (MessageBox.Show("Удалить эту задачу навсегда?", "Удаление", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                {
-                    _taskRepo.DeleteTask(taskId);
-                    if (IsEditing && _editingTaskId == taskId) ResetForm();
-                    LoadData();
-                }
+                _taskRepo.DeleteTask(taskId);
+                if (IsEditing && _editingTaskId == taskId) ResetForm();
+                LoadData();
             }
         }
 
@@ -333,23 +328,15 @@ namespace WpfApp1.ViewModels
         {
             if (DateTime.Now.Hour < 20)
             {
-                MessageBox.Show("Подводить итоги еще рано! Сдача дежурства и сдвиг задач доступны только после 20:00.",
-                                "Рано", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Сдача дежурства доступна только после 20:00.", "Рано", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var confirmResult = MessageBox.Show(
-                "Вы уверены, что хотите подвести итоги дня?\n\n" +
-                "• Все выполненные задачи уйдут в Архив\n" +
-                "• Задачи 'В процессе' будут отмечены как Выполненные\n" +
-                "• Новые задачи перейдут в работу ('В процессе')",
-                "Сдача дежурства", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-            if (confirmResult == MessageBoxResult.Yes)
+            if (MessageBox.Show("Подвести итоги дня?", "Сдача дежурства", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 _taskRepo.ShiftTasksForNewDay();
                 LoadData();
-                MessageBox.Show("Сутки успешно закрыты! Задачи сдвинуты по конвейеру.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Сутки успешно закрыты!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
     }

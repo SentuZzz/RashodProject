@@ -81,6 +81,9 @@
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="#ECFDF5"/>
                                                 <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CurrentStatus}" Value="На задаче">
+                                                        <Setter Property="Background" Value="#FFF7ED"/>
+                                                    </DataTrigger>
                                                     <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
                                                         <Setter Property="Background" Value="#EFF6FF"/>
                                                     </DataTrigger>
@@ -101,6 +104,9 @@
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="#10B981"/>
                                                     <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CurrentStatus}" Value="На задаче">
+                                                            <Setter Property="Foreground" Value="#D97706"/>
+                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding CurrentStatus}" Value="Отпуск">
                                                             <Setter Property="Foreground" Value="#3B82F6"/>
                                                         </DataTrigger>
