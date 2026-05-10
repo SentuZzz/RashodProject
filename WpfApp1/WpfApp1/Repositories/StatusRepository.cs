@@ -15,49 +15,40 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                return connection.Query<StatusModel>("SELECT * FROM Statuses").ToList();
+                try { return connection.Query<StatusModel>("SELECT * FROM Statuses").ToList(); } catch { return new List<StatusModel>(); }
             }
         }
 
         public void AddStatusLog(int soldierId, int statusId, DateTime startDate, DateTime endDate, string documentInfo)
         {
-            using (var connection = new SQLiteConnection(_connectionString))
-            {
-                string sql = @"
-                    INSERT INTO StatusLog (SoldierID, StatusID, StartDate, EndDate, DocumentInfo) 
-                    VALUES (@SoldierID, @StatusID, @StartDate, @EndDate, @DocumentInfo)";
-
-                connection.Execute(sql, new
-                {
-                    SoldierID = soldierId,
-                    StatusID = statusId,
-                    StartDate = startDate,
-                    EndDate = endDate,
-                    DocumentInfo = documentInfo
-                });
-            }
+            // Оставили пустым для обратной совместимости, если старые методы где-то вызываются
         }
-        public List<NotificationModel> GetUpcomingNotifications(int daysAhead = 3)
+
+        // ИСПРАВЛЕНИЕ: Теперь берем окно в днях (по умолчанию 2) и ищем и в прошлом, и в будущем
+        public List<NotificationModel> GetUpcomingNotifications(int daysWindow = 2)
         {
             var notifications = new List<NotificationModel>();
             DateTime today = DateTime.Today;
-            DateTime future = today.AddDays(daysAhead);
+            DateTime past = today.AddDays(-daysWindow);   // 2 дня назад
+            DateTime future = today.AddDays(daysWindow);  // 2 дня вперед
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
+                // ИСПРАВЛЕНИЕ: Запрашиваем данные из НОВОЙ таблицы SoldierStatuses!
                 string sql = @"
-            SELECT s.LastName || ' ' || substr(s.FirstName, 1, 1) || '.' as SoldierName,
-                   st.StatusName, sl.StartDate, sl.EndDate
-            FROM StatusLog sl
-            JOIN Soldiers s ON sl.SoldierID = s.SoldierID
-            JOIN Statuses st ON sl.StatusID = st.StatusID
-            WHERE st.IsAbsence = 1 AND 
-                 ((date(sl.StartDate) BETWEEN date(@Today) AND date(@Future))
-               OR (date(sl.EndDate) BETWEEN date(@Today) AND date(@Future)))";
+                    SELECT s.LastName || ' ' || substr(s.FirstName, 1, 1) || '.' as SoldierName,
+                           ss.StatusType as StatusName, 
+                           ss.StartDate, 
+                           ss.EndDate
+                    FROM SoldierStatuses ss
+                    JOIN Soldiers s ON ss.SoldierID = s.SoldierID
+                    WHERE ss.StatusType != 'В строю' AND 
+                         ((date(ss.StartDate) BETWEEN date(@Past) AND date(@Future))
+                       OR (date(ss.EndDate) BETWEEN date(@Past) AND date(@Future)))";
 
                 var records = connection.Query(sql, new
                 {
-                    Today = today.ToString("yyyy-MM-dd"),
+                    Past = past.ToString("yyyy-MM-dd"),
                     Future = future.ToString("yyyy-MM-dd")
                 });
 
@@ -68,8 +59,8 @@ namespace WpfApp1.Repositories
                     string name = row.SoldierName;
                     string status = row.StatusName;
 
-                    // Если дата начала попадает в наши 3 дня
-                    if (start >= today && start <= future)
+                    // Если дата начала попадает в наше окно (Боец убывает)
+                    if (start >= past && start <= future)
                     {
                         notifications.Add(new NotificationModel
                         {
@@ -79,8 +70,9 @@ namespace WpfApp1.Repositories
                             IsDeparting = true
                         });
                     }
-                    // Если дата конца попадает в наши 3 дня
-                    if (end >= today && end <= future)
+
+                    // Если дата конца попадает в наше окно (Боец возвращается)
+                    if (end >= past && end <= future)
                     {
                         notifications.Add(new NotificationModel
                         {
@@ -92,7 +84,8 @@ namespace WpfApp1.Repositories
                     }
                 }
             }
-            // Сортируем по дате, чтобы ближайшие были сверху
+
+            // Сортируем по дате, чтобы хронология событий была правильной (сначала прошедшие, потом будущие)
             return notifications.OrderBy(n => n.EventDate).ToList();
         }
     }

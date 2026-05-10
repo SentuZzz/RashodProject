@@ -159,6 +159,12 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
+                // 1. Сначала "закрываем" любой текущий активный статус (ставим дату окончания на вчерашний день), 
+                // чтобы статусы не наслаивались друг на друга
+                string closeOldSql = "UPDATE SoldierStatuses SET EndDate = date('now', '-1 day') WHERE SoldierID = @Id AND date(EndDate) >= date('now')";
+                connection.Execute(closeOldSql, new { Id = soldierId });
+
+                // 2. Если командир выбрал не "В строю", а какой-то реальный статус отсутствия - создаем новую запись
                 if (statusType != "В строю")
                 {
                     string sql = "INSERT INTO SoldierStatuses (SoldierID, StatusType, StartDate, EndDate) VALUES (@Id, @Type, @Start, @End)";
@@ -172,6 +178,55 @@ namespace WpfApp1.Repositories
             using (var connection = new SQLiteConnection(_connectionString))
             {
                 connection.Execute("UPDATE Soldiers SET IsDismissed = 1 WHERE SoldierID = @Id", new { Id = soldierId });
+            }
+        }
+
+        public string GetFutureObligationsInfo(int soldierId, DateTime startDate, DateTime endDate)
+        {
+            using (var connection = new SQLiteConnection(_connectionString))
+            {
+                var obligations = new List<string>();
+
+                // 1. Проверяем будущие наряды
+                string dutySql = @"
+                    SELECT d.DutyName, dh.DutyDate 
+                    FROM DutyHistory dh 
+                    JOIN Duties d ON dh.DutyID = d.DutyID 
+                    WHERE dh.SoldierID = @Id 
+                      AND date(dh.DutyDate) >= date(@Start) 
+                      AND date(dh.DutyDate) <= date(@End)";
+
+                var duties = connection.Query(dutySql, new { Id = soldierId, Start = startDate, End = endDate });
+                foreach (var d in duties)
+                {
+                    DateTime dt = DateTime.Parse(d.DutyDate.ToString());
+                    obligations.Add($"• Наряд «{d.DutyName}» ({dt:dd.MM.yyyy})");
+                }
+
+                // 2. Проверяем невыполненные задачи, которые попадают на эти даты
+                string taskSql = @"
+                    SELECT th.TaskName, th.DueDate 
+                    FROM TaskAssignments ta 
+                    JOIN TaskHistory th ON ta.TaskHistoryID = th.TaskHistoryID 
+                    WHERE ta.SoldierID = @Id 
+                      AND th.Status != 'Выполнено'
+                      AND date(th.CreationDate) <= date(@End) 
+                      AND (th.DueDate IS NULL OR date(th.DueDate) >= date(@Start))";
+
+                var tasks = connection.Query(taskSql, new { Id = soldierId, Start = startDate, End = endDate });
+                foreach (var t in tasks)
+                {
+                    string deadlineInfo = t.DueDate != null ? $"до {DateTime.Parse(t.DueDate.ToString()):dd.MM.yyyy}" : "без срока";
+                    obligations.Add($"• Задача «{t.TaskName}» ({deadlineInfo})");
+                }
+
+                // Если нашли пересечения - возвращаем единый текст
+                if (obligations.Any())
+                {
+                    return string.Join("\n", obligations);
+                }
+
+                return null; // Всё чисто
             }
         }
     }

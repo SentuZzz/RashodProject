@@ -27,6 +27,24 @@ namespace WpfApp1.ViewModels
             set { _soldiers = value; OnPropertyChanged(); }
         }
 
+        public ObservableCollection<string> AvailableStatuses { get; set; }
+
+        private string _selectedStatusType;
+        public string SelectedStatusType { get => _selectedStatusType; set { _selectedStatusType = value; OnPropertyChanged(); } }
+
+        private DateTime _statusStartDate = DateTime.Today;
+        public DateTime StatusStartDate { get => _statusStartDate; set { _statusStartDate = value; OnPropertyChanged(); } }
+
+        private DateTime _statusEndDate = DateTime.Today.AddDays(3);
+        public DateTime StatusEndDate { get => _statusEndDate; set { _statusEndDate = value; OnPropertyChanged(); } }
+
+        private bool _isStatusFormOpen;
+        public bool IsStatusFormOpen { get => _isStatusFormOpen; set { _isStatusFormOpen = value; OnPropertyChanged(); } }
+
+        public ICommand OpenStatusFormCommand { get; }
+        public ICommand SaveStatusCommand { get; }
+        public ICommand CancelStatusCommand { get; }
+
         public ObservableCollection<DirectoryItemModel> Ranks { get; set; } = new ObservableCollection<DirectoryItemModel>();
 
         private ObservableCollection<DirectoryItemModel> _positions = new ObservableCollection<DirectoryItemModel>();
@@ -170,6 +188,12 @@ namespace WpfApp1.ViewModels
             DeleteSoldierCommand = new ViewModelCommand(ExecuteDeleteSoldier);
             CancelEditCommand = new ViewModelCommand(o => { ResetForm(); IsFormOpen = false; });
             ToggleBulkModeCommand = new ViewModelCommand(o => { IsBulkInsertMode = !IsBulkInsertMode; ResetForm(keepMode: true); });
+
+            AvailableStatuses = new ObservableCollection<string> { "В строю", "Отпуск", "Госпиталь", "Командировка", "Увольнение" };
+
+            OpenStatusFormCommand = new ViewModelCommand(ExecuteOpenStatusForm);
+            SaveStatusCommand = new ViewModelCommand(ExecuteSaveStatus);
+            CancelStatusCommand = new ViewModelCommand(o => { IsStatusFormOpen = false; _editingSoldierId = 0; });
 
             LoadData();
             AppMessenger.DirectoriesUpdated += LoadData;
@@ -490,5 +514,63 @@ namespace WpfApp1.ViewModels
         }
 
         public void Dispose() => AppMessenger.DirectoriesUpdated -= LoadData;
+
+        private void ExecuteOpenStatusForm(object obj)
+        {
+            if (obj is SoldierModel soldier)
+            {
+                _editingSoldierId = soldier.SoldierID;
+                SelectedStatusType = AvailableStatuses.Contains(soldier.CurrentStatus) ? soldier.CurrentStatus : "Отпуск";
+                StatusStartDate = DateTime.Today;
+                StatusEndDate = DateTime.Today.AddDays(7); // По умолчанию ставим на неделю
+
+                IsEditing = false;
+                IsBulkInsertMode = false;
+                IsFormOpen = false;
+                IsStatusFormOpen = true; // Открываем именно форму статуса
+            }
+        }
+
+        private void ExecuteSaveStatus(object obj)
+        {
+            if (StatusEndDate.Date < StatusStartDate.Date)
+            {
+                MessageBox.Show("Дата окончания не может быть раньше даты начала!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // --- НОВАЯ ЛОГИКА: ПРОВЕРКА ПЕРЕСЕЧЕНИЙ ---
+            if (SelectedStatusType != "В строю")
+            {
+                string obligationsInfo = _soldierRepo.GetFutureObligationsInfo(_editingSoldierId, StatusStartDate, StatusEndDate);
+
+                if (!string.IsNullOrEmpty(obligationsInfo))
+                {
+                    var result = MessageBox.Show(
+                        $"Внимание! У военнослужащего есть запланированные активности на период его отсутствия:\n\n" +
+                        $"{obligationsInfo}\n\n" +
+                        $"Вы уверены, что хотите перевести его в статус «{SelectedStatusType}»?\n" +
+                        $"Программа не удалит его из этих списков автоматически — вам потребуется вручную назначить замену.",
+                        "Предупреждение о конфликте",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Warning);
+
+                    // Если командир передумал - отменяем сохранение
+                    if (result == MessageBoxResult.No)
+                    {
+                        return;
+                    }
+                }
+            }
+            // ------------------------------------------
+
+            _soldierRepo.UpdateSoldierStatus(_editingSoldierId, SelectedStatusType, StatusStartDate, StatusEndDate);
+
+            IsStatusFormOpen = false;
+            _editingSoldierId = 0;
+            LoadSoldiers();
+            AppMessenger.BroadcastDutiesUpdated();
+            MessageBox.Show("Статус военнослужащего успешно изменен.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
     }
 }

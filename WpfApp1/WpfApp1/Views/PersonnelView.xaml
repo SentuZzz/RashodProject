@@ -7,6 +7,10 @@
              mc:Ignorable="d" 
              d:DesignHeight="700" d:DesignWidth="1100">
 
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
     <Grid>
         <Border Background="White" CornerRadius="10" Margin="20" Padding="15">
             <Border.Effect>
@@ -159,12 +163,16 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTemplateColumn Header="Действия" Width="80" MinWidth="80">
+                        <DataGridTemplateColumn Header="Действия" Width="100" MinWidth="100">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Command="{Binding DataContext.OpenStatusFormCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                                CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Изменить статус" Margin="0,0,12,0">
+                                            <fa:IconImage Icon="UserClock" Foreground="#F59E0B" Width="14" Height="14"/>
+                                        </Button>
                                         <Button Command="{Binding DataContext.EditSoldierCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-                                                CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Редактировать" Margin="0,0,10,0">
+                                                CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Редактировать карточку" Margin="0,0,10,0">
                                             <fa:IconImage Icon="PenToSquare" Foreground="#3B82F6" Width="14" Height="14"/>
                                         </Button>
                                         <Button Command="{Binding DataContext.DeleteSoldierCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
@@ -188,11 +196,14 @@
                         <DataTrigger Binding="{Binding IsFormOpen}" Value="True">
                             <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
+                        <DataTrigger Binding="{Binding IsStatusFormOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </Grid.Style>
 
-            <Border Background="White" CornerRadius="10" Padding="25" Width="400" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVis}}" Background="White" CornerRadius="10" Padding="25" Width="400" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="20" Color="Black" Opacity="0.2" ShadowDepth="5"/>
                 </Border.Effect>
@@ -339,6 +350,71 @@
                         </Button>
                     </Grid>
                 </Grid>
+            </Border>
+
+            <Border Visibility="{Binding IsStatusFormOpen, Converter={StaticResource BoolToVis}}" Background="White" CornerRadius="10" Padding="25" Width="400" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" Color="Black" Opacity="0.2" ShadowDepth="5"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="Смена статуса" FontSize="18" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Новый статус:" Foreground="#94A3B8" FontSize="12" Margin="0,0,0,5"/>
+                    <ComboBox ItemsSource="{Binding AvailableStatuses}" SelectedItem="{Binding SelectedStatusType}" Height="35" Margin="0,0,0,15"/>
+
+                    <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedStatusType}" Value="В строю">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <TextBlock Text="С какого числа:" Foreground="#94A3B8" FontSize="12" Margin="0,0,0,5"/>
+                        <DatePicker SelectedDate="{Binding StatusStartDate}" Height="35" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="По какое число (включительно):" Foreground="#94A3B8" FontSize="12" Margin="0,0,0,5"/>
+                        <DatePicker SelectedDate="{Binding StatusEndDate}" Height="35" Margin="0,0,0,25"/>
+                    </StackPanel>
+
+                    <TextBlock Text="Боец будет возвращен в строй автоматически по истечении срока." Foreground="#10B981" FontSize="11" FontStyle="Italic" TextWrapping="Wrap" Margin="0,0,0,15">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedStatusType}" Value="В строю">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="Применить" Command="{Binding SaveStatusCommand}" Height="40" Background="#F59E0B" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="6"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                        <Button Grid.Column="1" Content="Отмена" Command="{Binding CancelStatusCommand}" Height="40" Background="#EF4444" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Margin="10,0,0,0" Padding="15,0">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="6"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </Grid>
+                </StackPanel>
             </Border>
         </Grid>
     </Grid>
