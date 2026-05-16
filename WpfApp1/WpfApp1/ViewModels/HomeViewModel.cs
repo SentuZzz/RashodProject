@@ -158,12 +158,10 @@ namespace WpfApp1.ViewModels
 
         private void LoadStatistics()
         {
-            // Нам больше не нужно передавать дату, репозиторий сам знает, сколько сейчас времени!
             var soldiers = _soldierRepository.GetAllSoldiers();
 
             TotalCount = soldiers.Count;
 
-            // Считаем строго по тексту статуса, который выдала база
             OnDutyCount = soldiers.Count(s => s.CurrentStatus == "В наряде");
             AbsentCount = soldiers.Count(s => s.CurrentStatus != "В строю" && s.CurrentStatus != "В наряде");
             VmpCount = soldiers.Count(s => s.CurrentStatus == "В строю" && s.UnitName != null &&
@@ -173,7 +171,6 @@ namespace WpfApp1.ViewModels
 
             InFormationCount = TotalCount - OnDutyCount - AbsentCount - VmpCount;
 
-            // Загрузка списков
             DateTime now = DateTime.Now;
             DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
             DateTime planningDate = activeShiftDate.AddDays(1);

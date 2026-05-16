@@ -6,7 +6,6 @@ namespace WpfApp1.Helpers
     {
         public static event Action DirectoriesUpdated;
 
-        // НОВЫЙ СИГНАЛ: когда назначают людей в наряд
         public static event Action DutiesUpdated;
 
         public static void BroadcastDirectoriesUpdated() => DirectoriesUpdated?.Invoke();

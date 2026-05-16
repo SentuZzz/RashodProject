@@ -108,12 +108,10 @@ namespace WpfApp1.ViewModels
 
             AssignDutyCommand = new ViewModelCommand(ExecuteAssignDuty, CanExecuteAssignDuty);
 
-            // ИСПРАВЛЕНИЕ: Синхронизируем стартовую дату со временем смены (как на Главной странице)
             DateTime now = DateTime.Now;
             DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
             DateTime planningDate = activeShiftDate.AddDays(1); // Мы всегда планируем следующую смену
 
-            // Инициализируем без вызова сеттера, чтобы избежать двойной загрузки при старте
             _selectedDate = planningDate;
             _customAssignDate = planningDate;
 
@@ -131,11 +129,9 @@ namespace WpfApp1.ViewModels
         private void LoadSoldiers()
         {
             bool includeDismissed = SelectedDate.Date < DateTime.Today;
-            // Передаем выбранную дату в репозиторий. Репозиторий сам подставит статус "В наряде", 
-            // если боец назначен на SelectedDate.
+
             var allSoldiers = _repository.GetAllSoldiers(SelectedDate, includeDismissed);
 
-            // Фильтр "Скрыть недоступных"
             if (HideUnavailable)
             {
                 allSoldiers = allSoldiers.Where(s =>
@@ -149,7 +145,6 @@ namespace WpfApp1.ViewModels
             }
             else
             {
-                // Показываем всех, кроме ВМП
                 allSoldiers = allSoldiers.Where(s =>
                     s.UnitName == null ||
                     (s.UnitName.IndexOf("ВМП", StringComparison.OrdinalIgnoreCase) < 0 &&
@@ -176,7 +171,6 @@ namespace WpfApp1.ViewModels
                          SelectedSoldier.UnitName.IndexOf("пополнения", StringComparison.OrdinalIgnoreCase) >= 0 ||
                          SelectedSoldier.UnitName.IndexOf("КМБ", StringComparison.OrdinalIgnoreCase) >= 0);
 
-            // Кнопка блокируется, если статус не "В строю" (т.е. если боец в наряде, госпитале и т.д.)
             return (SelectedSoldier.CurrentStatus == "В строю" || SelectedSoldier.CurrentStatus == "На задаче") && !SelectedSoldier.IsOnActiveDuty && !isVmp;
         }
 

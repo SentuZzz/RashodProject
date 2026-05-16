@@ -53,13 +53,11 @@ namespace WpfApp1.Repositories
 
                 var soldiers = connection.Query<SoldierModel>(sql).ToList();
 
-                // 1. БАЗОВЫЕ СТАТУСЫ (Госпиталь, Отпуск)
                 string todayStr = DateTime.Today.ToString("yyyy-MM-dd");
                 string statusSql = @"SELECT SoldierID, StatusType FROM SoldierStatuses 
                                      WHERE date(StartDate) <= date(@Today) AND date(EndDate) >= date(@Today)";
                 var activeStatuses = connection.Query(statusSql, new { Today = todayStr }).ToList();
 
-                // 2. АКТИВНЫЕ ЗАДАЧИ: Кто прямо сейчас выполняет задачу
                 string activeTasksSql = @"
                     SELECT ta.SoldierID 
                     FROM TaskAssignments ta
@@ -67,7 +65,6 @@ namespace WpfApp1.Repositories
                     WHERE th.Status = 'В процессе'";
                 var onTaskIds = connection.Query<int>(activeTasksSql).ToHashSet();
 
-                // 3. РЕАЛЬНОЕ ВРЕМЯ НАРЯДОВ (Правило 16:00 - 16:00)
                 DateTime now = DateTime.Now;
                 DateTime currentShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
 
@@ -76,17 +73,14 @@ namespace WpfApp1.Repositories
 
                 foreach (var s in soldiers)
                 {
-                    // Назначаем базовый статус
                     var activeStatus = activeStatuses.FirstOrDefault(st => (int)st.SoldierID == s.SoldierID);
                     s.CurrentStatus = activeStatus != null ? (string)activeStatus.StatusType : "В строю";
 
-                    // Перекрываем статусом задачи
                     if (s.CurrentStatus == "В строю" && onTaskIds.Contains(s.SoldierID))
                     {
                         s.CurrentStatus = "На задаче";
                     }
 
-                    // Перекрываем статусом наряда (Наивысший приоритет)
                     if ((s.CurrentStatus == "В строю" || s.CurrentStatus == "На задаче") && currentlyOnDutyIds.Contains(s.SoldierID))
                     {
                         s.CurrentStatus = "В наряде";
@@ -95,7 +89,6 @@ namespace WpfApp1.Repositories
                     if (s.JoinDate == DateTime.MinValue) s.JoinDate = DateTime.Today;
                 }
 
-                // 4. ПЛАНИРОВАНИЕ (Для календаря)
                 if (dutyDate.HasValue)
                 {
                     string plannedDutySql = @"SELECT SoldierID FROM DutyHistory WHERE date(DutyDate) = date(@DutyDate)";
@@ -159,12 +152,10 @@ namespace WpfApp1.Repositories
         {
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // 1. Сначала "закрываем" любой текущий активный статус (ставим дату окончания на вчерашний день), 
-                // чтобы статусы не наслаивались друг на друга
+
                 string closeOldSql = "UPDATE SoldierStatuses SET EndDate = date('now', '-1 day') WHERE SoldierID = @Id AND date(EndDate) >= date('now')";
                 connection.Execute(closeOldSql, new { Id = soldierId });
 
-                // 2. Если командир выбрал не "В строю", а какой-то реальный статус отсутствия - создаем новую запись
                 if (statusType != "В строю")
                 {
                     string sql = "INSERT INTO SoldierStatuses (SoldierID, StatusType, StartDate, EndDate) VALUES (@Id, @Type, @Start, @End)";
@@ -187,7 +178,6 @@ namespace WpfApp1.Repositories
             {
                 var obligations = new List<string>();
 
-                // 1. Проверяем будущие наряды
                 string dutySql = @"
                     SELECT d.DutyName, dh.DutyDate 
                     FROM DutyHistory dh 
@@ -203,7 +193,6 @@ namespace WpfApp1.Repositories
                     obligations.Add($"• Наряд «{d.DutyName}» ({dt:dd.MM.yyyy})");
                 }
 
-                // 2. Проверяем невыполненные задачи, которые попадают на эти даты
                 string taskSql = @"
                     SELECT th.TaskName, th.DueDate 
                     FROM TaskAssignments ta 
@@ -220,13 +209,12 @@ namespace WpfApp1.Repositories
                     obligations.Add($"• Задача «{t.TaskName}» ({deadlineInfo})");
                 }
 
-                // Если нашли пересечения - возвращаем единый текст
                 if (obligations.Any())
                 {
                     return string.Join("\n", obligations);
                 }
 
-                return null; // Всё чисто
+                return null; 
             }
         }
     }

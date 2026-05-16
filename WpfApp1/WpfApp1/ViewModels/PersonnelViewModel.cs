@@ -225,7 +225,6 @@ namespace WpfApp1.ViewModels
 
             try
             {
-                // 1. ФИЛЬТРАЦИЯ ПОДРАЗДЕЛЕНИЙ (ВОЗВРАЩЕНО!)
                 var currentUnitId = SelectedUnit?.Id;
                 var allowedUnits = new List<DirectoryItemModel>();
 
@@ -248,7 +247,6 @@ namespace WpfApp1.ViewModels
                 Units = new ObservableCollection<DirectoryItemModel>(allowedUnits);
                 SelectedUnit = Units.FirstOrDefault(u => u.Id == currentUnitId) ?? Units.FirstOrDefault();
 
-                // 2. ФИЛЬТРАЦИЯ ЗВАНИЙ
                 var currentRankId = SelectedRank?.Id;
                 var allowedRanks = new List<DirectoryItemModel>();
 
@@ -266,8 +264,6 @@ namespace WpfApp1.ViewModels
                     SelectedRank = allowedRanks.FirstOrDefault(r => (r.Name?.Equals("Рядовой", StringComparison.OrdinalIgnoreCase) ?? false)) ?? allowedRanks.FirstOrDefault();
                 }
 
-                // 3. ФИЛЬТРАЦИЯ ДОЛЖНОСТЕЙ В ЗАВИСИМОСТИ ОТ ЗВАНИЯ
-                // 3. ФИЛЬТРАЦИЯ ДОЛЖНОСТЕЙ В ЗАВИСИМОСТИ ОТ ЗВАНИЯ (ПО УСТАВУ)
                 var currentPosId = SelectedPosition?.Id;
                 var allowedPositions = new List<DirectoryItemModel>();
 
@@ -284,7 +280,6 @@ namespace WpfApp1.ViewModels
                     {
                         string p = pos.Name?.ToLower() ?? "";
 
-                        // Категории должностей по штату
                         bool isSoldierPos = p.Contains("стрелок") || p.Contains("пулеметчик") || p.Contains("гранатометчик") || p.Contains("наводчик") || p.Contains("водитель");
                         bool isSeniorSoldierPos = p.Contains("старший стрелок");
                         bool isSquadLeader = p.Contains("командир отделения");
@@ -295,15 +290,12 @@ namespace WpfApp1.ViewModels
                         bool isDepCompanyLeader = p.Contains("заместитель командира роты") || p.Contains("замполит");
                         bool isCompanyLeader = p.Equals("командир роты");
 
-                        // Матрица допуска
                         if (isPrivate && isSoldierPos) allowedPositions.Add(pos);
                         else if (isCorporal && (isSoldierPos || isSeniorSoldierPos)) allowedPositions.Add(pos);
-                        // Сержантам разрешаем быть сержантами, но также временно стоять на солдатских должностях (как указано в доке)
                         else if (isSergeant && (isSquadLeader || isDepPlatoonLeader || isSoldierPos)) allowedPositions.Add(pos);
                         else if (isWarrant && (isCompanySergeant || isWarehouseChief || isPlatoonLeader)) allowedPositions.Add(pos);
                         else if (isOfficer && (isPlatoonLeader || isDepCompanyLeader || isCompanyLeader)) allowedPositions.Add(pos);
 
-                        // Если должность нестандартная (не описана в документе), разрешаем ее всем, чтобы не заблокировать систему
                         else if (!isSoldierPos && !isSeniorSoldierPos && !isSquadLeader && !isDepPlatoonLeader && !isCompanySergeant && !isWarehouseChief && !isPlatoonLeader && !isDepCompanyLeader && !isCompanyLeader)
                         {
                             allowedPositions.Add(pos);
@@ -324,11 +316,9 @@ namespace WpfApp1.ViewModels
 
         private void LoadSoldiers()
         {
-            // Рассчитываем актуальную дату смены нарядов
             DateTime now = DateTime.Now;
             DateTime activeShiftDate = now.Hour < 16 ? now.Date.AddDays(-1) : now.Date;
 
-            // Передаем ее в базу данных
             var soldiersData = _soldierRepo.GetAllSoldiers(activeShiftDate);
             Soldiers = new ObservableCollection<SoldierModel>(soldiersData ?? new List<SoldierModel>());
 
@@ -522,12 +512,12 @@ namespace WpfApp1.ViewModels
                 _editingSoldierId = soldier.SoldierID;
                 SelectedStatusType = AvailableStatuses.Contains(soldier.CurrentStatus) ? soldier.CurrentStatus : "Отпуск";
                 StatusStartDate = DateTime.Today;
-                StatusEndDate = DateTime.Today.AddDays(7); // По умолчанию ставим на неделю
+                StatusEndDate = DateTime.Today.AddDays(7); 
 
                 IsEditing = false;
                 IsBulkInsertMode = false;
                 IsFormOpen = false;
-                IsStatusFormOpen = true; // Открываем именно форму статуса
+                IsStatusFormOpen = true; 
             }
         }
 
@@ -539,7 +529,6 @@ namespace WpfApp1.ViewModels
                 return;
             }
 
-            // --- НОВАЯ ЛОГИКА: ПРОВЕРКА ПЕРЕСЕЧЕНИЙ ---
             if (SelectedStatusType != "В строю")
             {
                 string obligationsInfo = _soldierRepo.GetFutureObligationsInfo(_editingSoldierId, StatusStartDate, StatusEndDate);
@@ -555,14 +544,12 @@ namespace WpfApp1.ViewModels
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning);
 
-                    // Если командир передумал - отменяем сохранение
                     if (result == MessageBoxResult.No)
                     {
                         return;
                     }
                 }
             }
-            // ------------------------------------------
 
             _soldierRepo.UpdateSoldierStatus(_editingSoldierId, SelectedStatusType, StatusStartDate, StatusEndDate);
 

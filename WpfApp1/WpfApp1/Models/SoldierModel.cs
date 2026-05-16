@@ -11,7 +11,7 @@ namespace WpfApp1.Models
 
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public string Patronymic { get; set; } // ИСПРАВЛЕНО: Вернули правильное имя из БД!
+        public string Patronymic { get; set; } 
 
         public DateTime JoinDate { get; set; }
 

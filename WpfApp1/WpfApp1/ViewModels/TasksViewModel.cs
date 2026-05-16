@@ -18,7 +18,6 @@ namespace WpfApp1.ViewModels
         private bool _isSelected;
         public bool IsSelected { get => _isSelected; set { _isSelected = value; OnPropertyChanged(); } }
 
-        // Новое свойство: Предупреждение (Желтый цвет)
         private bool _isWarning;
         public bool IsWarning
         {
@@ -130,7 +129,6 @@ namespace WpfApp1.ViewModels
 
         private void LoadAvailableSoldiers()
         {
-            // Берем "В строю" и "На задаче" (чтобы при редактировании уже занятые бойцы не пропадали из списка)
             var inFormation = _soldierRepo.GetAllSoldiers().Where(s =>
                 (s.CurrentStatus == "В строю" || s.CurrentStatus == "На задаче") &&
                 !s.IsOnActiveDuty &&
@@ -184,10 +182,8 @@ namespace WpfApp1.ViewModels
                 bool isWarning = false;
                 string reason = "";
 
-                // Проверяем каждый день задачи
                 for (DateTime d = taskStart.Date; d <= taskEnd.Date; d = d.AddDays(1))
                 {
-                    // 1. Был в наряде ВЧЕРА (сменяется сегодня в 16:00, потом отдыхает)
                     if (s.BusyDates.ContainsKey(d.AddDays(-1)))
                     {
                         isBlocked = true;
@@ -195,10 +191,8 @@ namespace WpfApp1.ViewModels
                         break;
                     }
 
-                    // 2. Заступает в наряд СЕГОДНЯ (в 16:00)
                     if (s.BusyDates.ContainsKey(d))
                     {
-                        // Если задача заканчивается сегодня до 15:00 - можно, но осторожно
                         if (taskEnd <= d.AddHours(15))
                         {
                             isWarning = true;

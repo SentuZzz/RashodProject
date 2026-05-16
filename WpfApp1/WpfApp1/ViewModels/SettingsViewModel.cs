@@ -86,12 +86,11 @@ namespace WpfApp1.ViewModels
             OnPropertyChanged(nameof(SimpleFormVisibility)); OnPropertyChanged(nameof(DutyFormVisibility));
         }
 
-        // ИСПРАВЛЕНИЕ: Блокируем кнопку сохранения (добавления), если выбраны "Звания"
         private bool CanExecuteSaveItem(object obj) => !string.IsNullOrWhiteSpace(NewItemName) && SelectedMenu != "Звания";
 
         private void ExecuteSaveItem(object obj)
         {
-            if (SelectedMenu == "Звания") return; // Дополнительная защита
+            if (SelectedMenu == "Звания") return; 
 
             if (CurrentItems.Any(x => x.Name.Equals(NewItemName?.Trim(), StringComparison.OrdinalIgnoreCase) && (!IsEditing || x.Id != _editingItemId)))
             {
@@ -126,7 +125,6 @@ namespace WpfApp1.ViewModels
                 {
                     if (SelectedMenu == "Виды нарядов") _repo.AddDuty(NewItemName, SelectedPriority.Value, NewDutyLocation, capacity, duration);
                     else if (SelectedMenu == "Подразделения") _repo.AddItem("Units", "UnitName", NewItemName);
-                    // Добавление званий убрано из логики
                     else if (SelectedMenu == "Должности") _repo.AddItem("Positions", "PositionName", NewItemName);
                     else if (SelectedMenu == "Категории задач") _repo.AddItem("TaskCategories", "CategoryName", NewItemName);
                 }
@@ -141,7 +139,6 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteEditItem(object obj)
         {
-            // ИСПРАВЛЕНИЕ: Блокируем редактирование званий
             if (SelectedMenu == "Звания")
             {
                 MessageBox.Show("Редактирование воинских званий запрещено, так как они строго регламентированы общевоинскими уставами.", "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -169,7 +166,6 @@ namespace WpfApp1.ViewModels
 
         private void ExecuteDeleteItem(object obj)
         {
-            // ИСПРАВЛЕНИЕ: Блокируем удаление званий
             if (SelectedMenu == "Звания")
             {
                 MessageBox.Show("Удаление воинских званий запрещено.", "Действие запрещено", MessageBoxButton.OK, MessageBoxImage.Information);

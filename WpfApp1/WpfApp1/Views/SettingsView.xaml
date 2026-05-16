@@ -12,7 +12,6 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Левая часть (Меню навигации и Системные функции) -->
         <Border Grid.Column="0" Background="White" CornerRadius="10" Margin="0,0,20,0" Padding="15">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
@@ -58,7 +57,6 @@
                     </ListBox>
                 </StackPanel>
 
-                <!-- НОВЫЙ БЛОК: Резервное копирование -->
                 <StackPanel Grid.Row="1" Margin="0,20,0,0">
                     <Border Height="1" Background="#F1F5F9" Margin="0,0,0,15"/>
                     <TextBlock Text="База данных" FontSize="12" FontWeight="Bold" Foreground="#94A3B8" Margin="10,0,0,10"/>
@@ -90,7 +88,6 @@
             </Grid>
         </Border>
 
-        <!-- Правая часть (Контент справочника) -->
         <Border Grid.Column="1" Background="White" CornerRadius="10" Padding="25">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.05" ShadowDepth="2"/>
@@ -149,7 +146,6 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <!-- Форма добавления (ОБЫЧНЫЕ СПРАВОЧНИКИ) -->
                 <Border Grid.Row="2" Visibility="{Binding SimpleFormVisibility}" Background="#F1F5F9" CornerRadius="8" Padding="15" Margin="0,20,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -183,7 +179,6 @@
                     </Grid>
                 </Border>
 
-                <!-- Форма добавления (ДЛЯ НАРЯДОВ) -->
                 <Border Grid.Row="2" Visibility="{Binding DutyFormVisibility}" Background="#F1F5F9" CornerRadius="8" Padding="15" Margin="0,20,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>

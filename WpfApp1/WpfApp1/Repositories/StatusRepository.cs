@@ -21,20 +21,17 @@ namespace WpfApp1.Repositories
 
         public void AddStatusLog(int soldierId, int statusId, DateTime startDate, DateTime endDate, string documentInfo)
         {
-            // Оставили пустым для обратной совместимости, если старые методы где-то вызываются
         }
 
-        // ИСПРАВЛЕНИЕ: Теперь берем окно в днях (по умолчанию 2) и ищем и в прошлом, и в будущем
         public List<NotificationModel> GetUpcomingNotifications(int daysWindow = 2)
         {
             var notifications = new List<NotificationModel>();
             DateTime today = DateTime.Today;
-            DateTime past = today.AddDays(-daysWindow);   // 2 дня назад
-            DateTime future = today.AddDays(daysWindow);  // 2 дня вперед
+            DateTime past = today.AddDays(-daysWindow);   
+            DateTime future = today.AddDays(daysWindow); 
 
             using (var connection = new SQLiteConnection(_connectionString))
             {
-                // ИСПРАВЛЕНИЕ: Запрашиваем данные из НОВОЙ таблицы SoldierStatuses!
                 string sql = @"
                     SELECT s.LastName || ' ' || substr(s.FirstName, 1, 1) || '.' as SoldierName,
                            ss.StatusType as StatusName, 
@@ -59,7 +56,6 @@ namespace WpfApp1.Repositories
                     string name = row.SoldierName;
                     string status = row.StatusName;
 
-                    // Если дата начала попадает в наше окно (Боец убывает)
                     if (start >= past && start <= future)
                     {
                         notifications.Add(new NotificationModel
@@ -70,8 +66,6 @@ namespace WpfApp1.Repositories
                             IsDeparting = true
                         });
                     }
-
-                    // Если дата конца попадает в наше окно (Боец возвращается)
                     if (end >= past && end <= future)
                     {
                         notifications.Add(new NotificationModel
@@ -85,7 +79,6 @@ namespace WpfApp1.Repositories
                 }
             }
 
-            // Сортируем по дате, чтобы хронология событий была правильной (сначала прошедшие, потом будущие)
             return notifications.OrderBy(n => n.EventDate).ToList();
         }
     }

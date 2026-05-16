@@ -8,7 +8,6 @@ namespace WpfApp1.Repositories
 {
     public class DirectoryRepository
     {
-        // ИСПРАВЛЕНИЕ: Добавлен параметр Foreign Keys=True; для строгой проверки связей в БД
         private readonly string _connectionString = "Data Source=rashod.db;Version=3;Foreign Keys=True;";
 
         public DirectoryRepository()
@@ -45,8 +44,7 @@ namespace WpfApp1.Repositories
         {
             using (var db = new SQLiteConnection(_connectionString))
             {
-                // Если элемент используется в другой таблице, Foreign Keys=True вызовет SQLiteException,
-                // и это предотвратит разрушение базы данных.
+
                 string sql = $"DELETE FROM {tableName} WHERE {idCol} = @Id";
                 db.Execute(sql, new { Id = idValue });
             }

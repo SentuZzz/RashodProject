@@ -7,11 +7,11 @@ namespace WpfApp1.Models
         public string SoldierName { get; set; }
         public string StatusName { get; set; }
         public DateTime EventDate { get; set; }
-        public bool IsDeparting { get; set; } // true = убывает, false = возвращается
+        public bool IsDeparting { get; set; } 
 
         public string ActionText => IsDeparting ? "Убывает:" : "Возвращается:";
         public string IconName => IsDeparting ? "ArrowRightFromBracket" : "ArrowRightToBracket";
-        public string IconColor => IsDeparting ? "#F59E0B" : "#10B981"; // Оранжевый (уходит), Зеленый (приходит)
+        public string IconColor => IsDeparting ? "#F59E0B" : "#10B981";
 
         public string DateString
         {

@@ -7,10 +7,8 @@
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1100">
 
     <UserControl.Resources>
-        <!-- Конвертер -->
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- Шаблон карточки задачи -->
         <DataTemplate x:Key="TaskCardTemplate">
             <Border Background="White" CornerRadius="8" Margin="0,0,0,12" Cursor="Hand"
                     PreviewMouseLeftButtonDown="TaskCard_PreviewMouseLeftButtonDown"
@@ -24,7 +22,6 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Шапка карточки (Категория) -->
                     <Border Grid.Row="0" Background="{Binding CategoryColor}" CornerRadius="8,8,0,0" Padding="12,6">
                         <Grid>
                             <TextBlock Text="{Binding CategoryName}" Foreground="White" FontWeight="Bold" FontSize="12" HorizontalAlignment="Left" VerticalAlignment="Center"/>
@@ -41,11 +38,9 @@
                         </Grid>
                     </Border>
 
-                    <!-- Тело карточки -->
                     <StackPanel Grid.Row="1" Margin="12,12,12,15">
                         <TextBlock Text="{Binding TaskName}" FontSize="15" FontWeight="Bold" Foreground="#1E293B" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
-                        <!-- Сроки -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,15" VerticalAlignment="Center">
                             <fa:IconImage Icon="CalendarAlt" Width="12" Height="12" Foreground="#94A3B8" Margin="0,0,5,0" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding StartDateText}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
@@ -64,7 +59,6 @@
                             </TextBlock>
                         </StackPanel>
 
-                        <!-- Исполнители -->
                         <ItemsControl ItemsSource="{Binding AssignedSoldiers}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -81,7 +75,6 @@
             </Border>
         </DataTemplate>
 
-        <!-- Стиль списка (Kanban колонки) -->
         <Style x:Key="KanbanColumnStyle" TargetType="ListView">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -108,7 +101,6 @@
             <ColumnDefinition Width="340"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Колонка 1: К выполнению -->
         <Border Grid.Column="0" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -120,7 +112,6 @@
             </Grid>
         </Border>
 
-        <!-- Колонка 2: В процессе -->
         <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -132,7 +123,6 @@
             </Grid>
         </Border>
 
-        <!-- Колонка 3: Выполнено -->
         <Border Grid.Column="2" Background="#F1F5F9" CornerRadius="10" Margin="0,0,15,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -144,7 +134,6 @@
             </Grid>
         </Border>
 
-        <!-- Правая панель (Форма редактирования) -->
         <Border Grid.Column="3" Background="White" CornerRadius="10" Padding="20">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="10" Color="Black" Opacity="0.1" ShadowDepth="2"/>
@@ -156,7 +145,6 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Шапка с датой и кнопкой Сдачи дежурства -->
                 <Grid Grid.Row="0" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -170,7 +158,6 @@
                         <DatePicker SelectedDate="{Binding SelectedDate}" Width="105" Height="28" FontSize="13" Cursor="Hand"/>
                     </StackPanel>
 
-                    <!-- НОВАЯ КНОПКА: СДАТЬ ДЕЖУРСТВО -->
                     <Button Grid.Column="2" Command="{Binding EndOfDayCommand}" Background="#F59E0B" Foreground="White" BorderThickness="0" Padding="10,0" Height="28" Cursor="Hand" ToolTip="Закрыть сутки и сдвинуть задачи в Архив (Доступно после 20:00)">
                         <Button.Resources>
                             <Style TargetType="Border">
@@ -186,7 +173,6 @@
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                     <StackPanel>
-                        <!-- Заголовок формы -->
                         <TextBlock Text="{Binding PanelTitle}" FontSize="16" FontWeight="Bold" Foreground="#3B82F6" Margin="0,0,0,15"/>
 
                         <TextBlock Text="Что нужно сделать?" Foreground="Gray" FontSize="12"/>
@@ -195,7 +181,6 @@
                         <TextBlock Text="Категория:" Foreground="Gray" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" DisplayMemberPath="CategoryName" Margin="0,5,0,15" Height="30"/>
 
-                        <!-- Дата и время начала -->
                         <Grid Margin="0,0,0,15">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -211,7 +196,6 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Дата и время дедлайна -->
                         <Grid Margin="0,0,0,15">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -227,12 +211,9 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Выбор исполнителей -->
 
-                        <!-- Контрактники (Комбобокс) -->
                         <TextBlock Text="Старший (Контрактник):" Foreground="Gray" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding AvailableContractors}" SelectedItem="{Binding SelectedContractor}" Margin="0,5,0,15" Height="30">
-                            <!-- Кастомный стиль элементов -->
                             <ComboBox.ItemContainerStyle>
                                 <Style TargetType="ComboBoxItem">
                                     <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
@@ -262,7 +243,6 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
 
-                        <!-- Срочники (Чекбоксы) -->
                         <TextBlock Text="В подчинении (Срочники):" Foreground="Gray" FontSize="12" Margin="0,0,0,10"/>
                         <ItemsControl ItemsSource="{Binding AvailableConscripts}">
                             <ItemsControl.ItemTemplate>
@@ -293,7 +273,6 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <!-- Кнопки сохранения -->
                 <Grid Grid.Row="2" Margin="0,15,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>

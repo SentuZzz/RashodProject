@@ -13,14 +13,11 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Шапка -->
         <TextBlock Grid.Row="0" Text="Отчеты и Выгрузка" FontSize="26" FontWeight="Bold" Foreground="{StaticResource secondaryBackBrush}" Margin="0,0,0,25"/>
 
-        <!-- Карточки отчетов -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <WrapPanel Orientation="Horizontal" ItemWidth="400">
 
-                <!-- КАРТОЧКА 1: Строевая записка -->
                 <Border Background="White" CornerRadius="12" Padding="25" Margin="0,0,25,25" VerticalAlignment="Top">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -60,7 +57,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- КАРТОЧКА 2: Рапортичка (Наряды) -->
                 <Border Background="White" CornerRadius="12" Padding="25" Margin="0,0,25,25" VerticalAlignment="Top">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>

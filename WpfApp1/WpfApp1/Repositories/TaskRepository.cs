@@ -39,7 +39,6 @@ namespace WpfApp1.Repositories
                 string sqlTasks = "SELECT t.*, c.CategoryName FROM TaskHistory t JOIN TaskCategories c ON t.CategoryID = c.CategoryID";
                 tasks = connection.Query<TaskModel>(sqlTasks).ToList();
 
-                // ИСПРАВЛЕНИЕ: Добавлен s.MiddleName в SELECT
                 string sqlAssignments = @"
                     SELECT ta.TaskHistoryID, s.SoldierID, s.LastName, s.FirstName, s.Patronymic, r.RankName, s.ServiceType
                     FROM TaskAssignments ta

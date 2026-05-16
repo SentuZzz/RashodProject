@@ -20,7 +20,6 @@ namespace WpfApp1.Models
         public string Status { get; set; }
         public List<SoldierModel> AssignedSoldiers { get; set; } = new List<SoldierModel>();
 
-        // Теперь даты выводятся с часами и минутами!
         public string StartDateText => CreationDate.ToString("dd.MM HH:mm");
         public string DeadlineText => DueDate.HasValue ? DueDate.Value.ToString("dd.MM HH:mm") : "Без срока";
         public bool IsOverdue => DueDate.HasValue && DueDate.Value < DateTime.Now && Status != "Выполнено";

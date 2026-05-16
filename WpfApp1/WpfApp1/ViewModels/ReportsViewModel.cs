@@ -36,12 +36,10 @@ namespace WpfApp1.ViewModels
             ExportDutyRosterCommand = new ViewModelCommand(ExecuteExportDutyRoster);
         }
 
-        // 1. ВЫГРУЗКА: СТРОЕВАЯ ЗАПИСКА (Весь личный состав)
         private void ExecuteExportMusterRoll(object obj)
         {
             try
             {
-                // Вызываем без параметров, чтобы получить кристально чистую текущую картину на данный момент
                 var soldiers = _soldierRepo.GetAllSoldiers();
 
                 var saveFileDialog = new SaveFileDialog
@@ -60,12 +58,10 @@ namespace WpfApp1.ViewModels
                     {
                         var ws = workbook.Worksheets.Add("Личный состав");
 
-                        // Заголовок
                         ws.Cell(1, 1).Value = $"СТРОЕВАЯ ЗАПИСКА (по состоянию на {DateTime.Now:dd.MM.yyyy HH:mm})";
                         ws.Range("A1:F1").Merge().Style.Font.SetBold().Font.FontSize = 14;
                         ws.Cell(1, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                        // Шапка таблицы
                         string[] headers = { "№ п/п", "Звание", "ФИО", "Подразделение", "Должность", "Текущий статус" };
                         for (int i = 0; i < headers.Length; i++)
                         {
@@ -77,7 +73,6 @@ namespace WpfApp1.ViewModels
                             cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                         }
 
-                        // Заполнение данными
                         int row = 4;
                         int index = 1;
                         foreach (var s in soldiers.OrderBy(x => x.UnitName).ThenBy(x => x.LastName))
@@ -88,24 +83,21 @@ namespace WpfApp1.ViewModels
                             ws.Cell(row, 4).Value = s.UnitName ?? "Не распределен";
                             ws.Cell(row, 5).Value = s.PositionName;
 
-                            // Теперь берем чистый статус прямо из нашей "умной" базы данных
                             string status = s.CurrentStatus;
                             ws.Cell(row, 6).Value = status;
 
-                            // Раскрашиваем статусы в цвета, соответствующие дизайну программы
                             if (status != "В строю")
                             {
                                 ws.Cell(row, 6).Style.Font.SetBold();
 
                                 if (status == "В наряде")
-                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkViolet; // Фиолетовый
+                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkViolet; 
                                 else if (status == "На задаче")
-                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkOrange; // Оранжевый
+                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkOrange; 
                                 else
-                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkRed;    // Красный (Госпиталь, Отпуск)
+                                    ws.Cell(row, 6).Style.Font.FontColor = XLColor.DarkRed;    
                             }
 
-                            // Сетка
                             ws.Range(row, 1, row, 6).Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
                             ws.Range(row, 1, row, 6).Style.Border.InsideBorder = XLBorderStyleValues.Thin;
 
@@ -125,7 +117,6 @@ namespace WpfApp1.ViewModels
             }
         }
 
-        // 2. ВЫГРУЗКА: РАПОРТИЧКА ПО НАРЯДАМ
         private void ExecuteExportDutyRoster(object obj)
         {
             try

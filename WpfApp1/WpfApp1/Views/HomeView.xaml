@@ -14,7 +14,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- 1. Шапка -->
         <Grid Grid.Row="0" Margin="0,0,0,25">
             <TextBlock Text="Главная панель" FontSize="26" FontWeight="Bold" Foreground="{StaticResource secondaryBackBrush}" VerticalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -22,12 +21,8 @@
                 <TextBlock Text="{Binding CurrentTime}" FontSize="28" FontWeight="Bold" Foreground="#344E41" VerticalAlignment="Bottom"/>
             </StackPanel>
         </Grid>
-
-        <!-- 2. Умная статистика (Адаптивная сетка) -->
-        <!-- Negative margins compensate for the children's outer margins, making gaps perfect -->
         <UniformGrid Grid.Row="1" Rows="1" Columns="{Binding GridColumnsCount}" Margin="-10,0,-10,20">
 
-            <!-- Карточка 1: Всего по списку -->
             <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -47,7 +42,6 @@
                 </Grid>
             </Border>
 
-            <!-- Карточка 2: В строю -->
             <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -67,7 +61,6 @@
                 </Grid>
             </Border>
 
-            <!-- Карточка 3: Отсутствуют -->
             <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -87,7 +80,6 @@
                 </Grid>
             </Border>
 
-            <!-- Карточка 4: В наряде -->
             <Border Background="White" CornerRadius="12" Padding="20" Margin="10">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -107,7 +99,6 @@
                 </Grid>
             </Border>
 
-            <!-- Карточка 5: КМБ / ВМП (Скрываемая) -->
             <Border Background="White" CornerRadius="12" Padding="20" Margin="10" Visibility="{Binding IsVmpVisible}">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -129,7 +120,6 @@
 
         </UniformGrid>
 
-        <!-- Нижняя часть Дашборда -->
         <Grid Grid.Row="2" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*"/>
@@ -137,14 +127,12 @@
                 <ColumnDefinition Width="2*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ЛЕВАЯ КОЛОНКА (Наряды) -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Блок 1: Планируемые наряды (Чеклист) -->
                 <Border Grid.Row="0" Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,15">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>
@@ -186,7 +174,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Блок 2: Активные наряды -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
                     <ItemsControl ItemsSource="{Binding ActiveDutyCards}">
                         <ItemsControl.ItemTemplate>
@@ -254,7 +241,6 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- ПРАВАЯ КОЛОНКА (События/Статусы) -->
             <Border Grid.Column="2" Background="White" CornerRadius="12" Padding="20">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" Color="Black" Opacity="0.05" ShadowDepth="3"/>

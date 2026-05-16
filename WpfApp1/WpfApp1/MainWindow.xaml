@@ -49,12 +49,10 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!--_Навигационное меню_-->
             <Border Grid.Column="0"
                     CornerRadius="10,0,0,10"
                     Background="{StaticResource secondaryBackBrush}">
                 <StackPanel>
-                    <!--Логотип-->
                     <StackPanel Orientation="Horizontal" Height="35" Margin="15,25,0,40">
                         <Image Source="/Images/ArmyLogo.png" Height="30" Margin="10,0,0,0"/>
                         <TextBlock Text="РАСХОД"
@@ -66,7 +64,6 @@
                                    Margin="10,0,0,0"/>
                     </StackPanel>
 
-                    <!-- Дашборд -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  IsChecked="True"
                                  Command="{Binding ShowHomeViewCommand}">
@@ -76,7 +73,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Личный состав -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  Command="{Binding ShowPersonnelViewCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -85,7 +81,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Наряды -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  Command="{Binding ShowDutiesViewCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -94,7 +89,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Рабочие команды -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  Command="{Binding ShowTasksViewCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -103,7 +97,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Журнал -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  Command="{Binding ShowHistoryViewCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -112,7 +105,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Справочники -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  Command="{Binding ShowSettingsViewCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -121,7 +113,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Документы -->
                     <RadioButton Style="{StaticResource menuButton}"
                                  Command="{Binding ShowReportsViewCommand}">
                         <StackPanel Orientation="Horizontal">
@@ -133,16 +124,12 @@
                 </StackPanel>
             </Border>
 
-            <!--_Основной контент_-->
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="35"/>
-                    <!-- Панель управления -->
                     <RowDefinition Height="*"/>
-                    <!-- Контент -->
                 </Grid.RowDefinitions>
 
-                <!--Панель управления (свернуть, закрыть)-->
                 <StackPanel Grid.Row="0"
                             Orientation="Horizontal"
                             FlowDirection="RightToLeft"
@@ -150,7 +137,6 @@
                             MouseLeftButtonDown="pnlControlBar_MouseLeftButtonDown">
 
                     <StackPanel.Resources>
-                        <!-- Стили для кнопок управления окном (можно вынести в отдельный файл) -->
                         <Style x:Key="WindowControlButton" TargetType="Button">
                             <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="Foreground" Value="#344E41"/>
@@ -188,8 +174,6 @@
                     <Button Style="{StaticResource WindowControlButton}" Tag="WindowMinimize" Click="MinimizeButton_Click" />
                 </StackPanel>
 
-                <!--_Область для отображения контента (View)_-->
-                <!-- Сюда будут загружаться ваши UserControls (Dashboard, Customers и т.д.) -->
                 <ContentControl Grid.Row="1" Margin="30 10 30 20"
                                 Content="{Binding CurrentView}"/>
 

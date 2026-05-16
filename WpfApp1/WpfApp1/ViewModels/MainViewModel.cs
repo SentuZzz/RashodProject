@@ -15,7 +15,6 @@ namespace WpfApp1.ViewModels
             }
         }
 
-        // Команды для всех 7 разделов
         public ICommand ShowHomeViewCommand { get; }
         public ICommand ShowPersonnelViewCommand { get; }
         public ICommand ShowDutiesViewCommand { get; }
@@ -26,7 +25,6 @@ namespace WpfApp1.ViewModels
 
         public MainViewModel()
         {
-            // Инициализация команд
             ShowHomeViewCommand = new ViewModelCommand(ExecuteShowHomeViewCommand);
             ShowPersonnelViewCommand = new ViewModelCommand(ExecuteShowPersonnelViewCommand);
             ShowDutiesViewCommand = new ViewModelCommand(ExecuteShowDutiesViewCommand);
@@ -35,7 +33,6 @@ namespace WpfApp1.ViewModels
             ShowSettingsViewCommand = new ViewModelCommand(ExecuteShowSettingsViewCommand);
             ShowReportsViewCommand = new ViewModelCommand(ExecuteShowReportsViewCommand);
 
-            // По умолчанию открываем Дашборд
             ExecuteShowHomeViewCommand(null);
         }
 
